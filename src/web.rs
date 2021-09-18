@@ -2,7 +2,7 @@ use super::*;
 use http::StatusCode;
 use include_dir::{include_dir, Dir};
 
-const WEB_DIR: Dir = include_dir!("web");
+const WEB_DIR: Dir = include_dir!("web/dist/planc");
 
 pub async fn route_request(req: Request) -> Result<Response> {
     let uri = req.uri();
@@ -10,7 +10,7 @@ pub async fn route_request(req: Request) -> Result<Response> {
     let path = if uri.path() == "/" {
         "index.html"
     } else {
-        &uri.path()[..1]
+        &uri.path()[1..]
     };
 
     if let Some(file) = WEB_DIR.get_file(path) {
