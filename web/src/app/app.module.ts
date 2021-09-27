@@ -6,7 +6,6 @@ import { FormsModule } from '@angular/forms';
 import { LoginComponent, LoginDialogComponent } from './login.component';
 import { MainComponent } from './main.component';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -25,7 +24,6 @@ import { NgModule } from '@angular/core';
     BrowserModule,
     BrowserAnimationsModule,
     MatButtonModule,
-    MatCheckboxModule,
     MatDialogModule,
     MatIconModule,
     MatInputModule,

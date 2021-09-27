@@ -1,13 +1,27 @@
 extern crate clap;
 extern crate env_logger;
+extern crate futures;
 extern crate http;
 extern crate hyper;
 extern crate include_dir;
 extern crate log;
+extern crate rand;
 extern crate serde;
+extern crate serde_json;
 extern crate tokio;
+extern crate tokio_tungstenite;
 
+mod api;
+mod connection;
+mod context;
+mod error;
+mod session;
 mod web;
+
+pub use self::connection::*;
+pub use self::context::*;
+pub use self::error::*;
+pub use self::session::*;
 
 use hyper::body::Body;
 use hyper::server::conn::AddrStream;
@@ -15,6 +29,7 @@ use hyper::server::Server;
 use std::future::Future;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 type BoxedError = Box<dyn std::error::Error + Send + Sync>;
@@ -58,13 +73,22 @@ async fn main() {
     let bind_port: u16 = arg_bind_port.parse().expect("Failed to parse bind port");
     let socket_address = SocketAddr::new(bind_address, bind_port);
 
-    let server = Server::bind(&socket_address).serve(MakeService);
+    let server = Server::bind(&socket_address).serve(MakeService::new());
     log::info!("Server started");
 
     server.await.expect("Server task failure");
 }
 
-struct MakeService;
+struct MakeService {
+    context: Arc<ServiceContext>,
+}
+
+impl MakeService {
+    pub fn new() -> Self {
+        let context = Arc::new(ServiceContext::new());
+        Self { context }
+    }
+}
 
 impl hyper::service::Service<&AddrStream> for MakeService {
     type Response = Service;
@@ -76,11 +100,20 @@ impl hyper::service::Service<&AddrStream> for MakeService {
     }
 
     fn call(&mut self, _conn: &AddrStream) -> Self::Future {
-        Box::pin(async move { Ok(Service) })
+        let context = self.context.clone();
+        Box::pin(async move { Ok(Service::new(context)) })
     }
 }
 
-struct Service;
+struct Service {
+    ctx: Arc<ServiceContext>,
+}
+
+impl Service {
+    pub fn new(ctx: Arc<ServiceContext>) -> Self {
+        Self { ctx }
+    }
+}
 
 impl hyper::service::Service<Request> for Service {
     type Response = Response;
@@ -92,10 +125,27 @@ impl hyper::service::Service<Request> for Service {
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        Box::pin(async move { route_request(req).await })
+        let ctx = self.ctx.clone();
+        Box::pin(async move { route_request(req, ctx).await })
     }
 }
 
-async fn route_request(req: Request) -> Result<Response> {
-    web::route_request(req).await
+async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Response> {
+    let path = req.uri().path();
+    assert!(path.starts_with('/'));
+
+    match path[1..].split('/').next() {
+        Some("api") => api::route_request(req, ctx).await,
+        _ => web::route_request(req).await,
+    }
+}
+
+pub fn generate_token(size: usize) -> String {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    std::iter::repeat(())
+        .map(|_| rng.sample(rand::distributions::Alphanumeric))
+        .map(char::from)
+        .take(size)
+        .collect()
 }

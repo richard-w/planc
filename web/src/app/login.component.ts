@@ -1,12 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { SessionService } from './session.service';
 
 class LoginDialogResult {
   name: string = '';
-  joinToken: string = '';
-  createSession: boolean = false;
+  sessionId: string = '';
 };
 
 @Component({
@@ -20,13 +18,11 @@ class LoginDialogResult {
       <br />
       <mat-form-field appearance="fill">
         <mat-label>Session ID</mat-label>
-        <input type="text" name="name" matInput [(ngModel)]="result.joinToken" [disabled]="result.createSession"/>
+        <input type="text" name="name" matInput [(ngModel)]="result.sessionId" />
       </mat-form-field>
-      <br />
-      <mat-checkbox [(ngModel)]="result.createSession" (change)="onCreateSessionChange()">Create Session</mat-checkbox>
     </div>
     <div mat-dialog-actions>
-      <button mat-raised-button color="primary" mat-dialog-close [disabled]="!isFormComplete()">Go</button>
+      <button mat-raised-button color="primary" [mat-dialog-close]="result" [disabled]="!isFormComplete()">Go</button>
     </div>
   `,
   styles: [
@@ -36,13 +32,9 @@ class LoginDialogResult {
 export class LoginDialogComponent {
   result: LoginDialogResult = new LoginDialogResult();
 
-  onCreateSessionChange() {
-    this.result.joinToken = '';
-  }
-
   isFormComplete() {
     if (this.result.name == '') return false;
-    if (this.result.joinToken == '' && !this.result.createSession) return false;
+    if (this.result.sessionId == '') return false;
     return true;
   }
 }
@@ -55,7 +47,6 @@ export class LoginDialogComponent {
 export class LoginComponent implements OnInit {
   constructor(
     private dialog: MatDialog,
-    private router: Router,
     private sessionService: SessionService,
   ) {}
 
@@ -65,18 +56,7 @@ export class LoginComponent implements OnInit {
       disableClose: true,
     });
     dialogRef.afterClosed().subscribe(result => {
-      var callback = (success: boolean, message: string | null) => {
-        if (success) {
-          this.router.navigate(['/']);
-        } else {
-          alert(message);
-        }
-      };
-      if (result.createSession) {
-        this.sessionService.createSession(result.name, callback);
-      } else {
-        this.sessionService.joinSession(result.name, result.joinToken, callback);
-      }
+      this.sessionService.joinSession(result.name, result.sessionId);
     });
   }
 }
