@@ -33,9 +33,11 @@ export class SessionService {
   private webSocket: WebSocketSubject<Message> | null = null;
   private sessionSubject: BehaviorSubject<Session | null>;
   private stateSubject: BehaviorSubject<SessionState | null>;
+  private uidSubject: BehaviorSubject<string | null>;
 
   public session: Observable<Session | null>;
   public state: Observable<SessionState | null>;
+  public uid: Observable<string | null>;
 
   constructor(
     private router: Router,
@@ -44,6 +46,8 @@ export class SessionService {
     this.session = this.sessionSubject.asObservable();
     this.stateSubject = new BehaviorSubject<SessionState | null>(null);
     this.state = this.stateSubject.asObservable();
+    this.uidSubject = new BehaviorSubject<string | null>(null);
+    this.uid = this.uidSubject.asObservable();
   }
 
   joinSession(name: string, sessionId: string) {
@@ -82,8 +86,8 @@ export class SessionService {
     this.webSocket.subscribe(msg => this.handleServerMessage(msg));
 
     // Send the name change message to initialize the connection.
-    var msg: Message = { tag: "NameChange", content: name };
-    this.webSocket.next(msg);
+    this.webSocket.next({tag: "Whoami", content: null });
+    this.webSocket.next({tag: "NameChange", content: name });
   }
 
   leaveSession() {
@@ -97,13 +101,11 @@ export class SessionService {
   }
 
   setPoints(points: number) {
-    var msg: Message = { tag: "SetPoints", content: points };
-    this.webSocket?.next(msg);
+    this.webSocket?.next({ tag: "SetPoints", content: points });
   }
 
   resetPoints() {
-    var msg: Message = { tag: "ResetPoints", content: null };
-    this.webSocket?.next(msg);
+    this.webSocket?.next({ tag: "ResetPoints", content: null });
   }
 
   handleServerMessage(msg: Message) {
@@ -113,8 +115,14 @@ export class SessionService {
         this.stateSubject.next(msg.content as SessionState);
         break;
       }
+      case "Whoami": {
+        console.log("Received 'Whoami' Message" + JSON.stringify(msg.content));
+        this.uidSubject.next(msg.content as string);
+        break;
+      }
       default: {
         console.log("Undefined message: " + msg.content);
+        break;
       }
     }
   }
@@ -128,16 +136,7 @@ export class SessionService {
   }
 
   uidValue(): string | null {
-    var ownUid: string | null = null;
-    let session: Session | null = this.sessionValue();
-    let state: SessionState | null = this.stateValue();
-    Object.keys(state?.users as any).forEach((uid: string) => {
-      let user = state?.users[uid];
-      if (user !== undefined && user.name === session?.name) {
-        ownUid = uid;
-      }
-    });
-    return ownUid;
+    return this.uidSubject.value;
   }
 
 }

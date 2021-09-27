@@ -77,14 +77,14 @@ impl Session {
                         state.users.get_mut(&user_id).unwrap().name = Some(name.clone());
                         state
                     })
-                    .await
+                    .await;
                 }
                 ClientMessage::SetPoints(points) => {
                     self.update_state(|mut state| {
                         state.users.get_mut(&user_id).unwrap().points = Some(points);
                         state
                     })
-                    .await
+                    .await;
                 }
                 ClientMessage::ResetPoints => {
                     self.update_state(|mut state| {
@@ -93,7 +93,10 @@ impl Session {
                         }
                         state
                     })
-                    .await
+                    .await;
+                }
+                ClientMessage::Whoami => {
+                    conn.send(&ServerMessage::Whoami(user_id)).await?;
                 }
             }
         }
@@ -134,10 +137,12 @@ enum ClientMessage {
     NameChange(String),
     SetPoints(i32),
     ResetPoints,
+    Whoami,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "tag", content = "content")]
 enum ServerMessage {
     State(SessionState),
+    Whoami(i64),
 }
