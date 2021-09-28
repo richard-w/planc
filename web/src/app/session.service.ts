@@ -4,12 +4,14 @@ import { Subject, BehaviorSubject, Observable } from 'rxjs';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 
 export class Session {
-  name: string = '';
-  sessionId: string = '';
+  name!: string;
+  sessionId!: string;
+  uid!: string;
+  state!: SessionState;
 }
 
 export class SessionState {
-  users: UserStateMap = {};
+  users!: UserStateMap;
 }
 
 export interface UserStateMap {
@@ -32,22 +34,18 @@ class Message {
 export class SessionService {
   private webSocket: WebSocketSubject<Message> | null = null;
   private sessionSubject: BehaviorSubject<Session | null>;
-  private stateSubject: BehaviorSubject<SessionState | null>;
-  private uidSubject: BehaviorSubject<string | null>;
-
   public session: Observable<Session | null>;
-  public state: Observable<SessionState | null>;
-  public uid: Observable<string | null>;
+
+  private name: string = '';
+  private sessionId: string = '';
+  private uid: string | null = null;
+  private state: SessionState | null = null;
 
   constructor(
     private router: Router,
   ) {
     this.sessionSubject = new BehaviorSubject<Session | null>(null);
     this.session = this.sessionSubject.asObservable();
-    this.stateSubject = new BehaviorSubject<SessionState | null>(null);
-    this.state = this.stateSubject.asObservable();
-    this.uidSubject = new BehaviorSubject<string | null>(null);
-    this.uid = this.uidSubject.asObservable();
   }
 
   joinSession(name: string, sessionId: string) {
@@ -67,15 +65,6 @@ export class SessionService {
     
     this.webSocket = webSocket({
       url: webSocketUrl,
-      openObserver: {
-        next: () => {
-          this.sessionSubject.next({
-            name: name,
-            sessionId: sessionId,
-          });
-          this.router.navigate(['/']);
-        },
-      },
       closeObserver: {
         next: (closeEvent) => {
           this.leaveSession();
@@ -86,8 +75,9 @@ export class SessionService {
     this.webSocket.subscribe(msg => this.handleServerMessage(msg));
 
     // Send the name change message to initialize the connection.
-    this.webSocket.next({tag: "Whoami", content: null });
     this.webSocket.next({tag: "NameChange", content: name });
+    // Request the user id.
+    this.webSocket.next({tag: "Whoami", content: null });
   }
 
   leaveSession() {
@@ -96,7 +86,10 @@ export class SessionService {
       this.webSocket = null;
     }
     this.sessionSubject.next(null);
-    this.stateSubject.next(null);
+    this.name = '';
+    this.sessionId = '';
+    this.uid = null;
+    this.state = null;
     this.router.navigate(['/login']);
   }
 
@@ -112,12 +105,12 @@ export class SessionService {
     switch (msg.tag) {
       case "State": {
         console.log("Received 'State' Message" + JSON.stringify(msg.content));
-        this.stateSubject.next(msg.content as SessionState);
+        this.state = msg.content as SessionState;
         break;
       }
       case "Whoami": {
         console.log("Received 'Whoami' Message" + JSON.stringify(msg.content));
-        this.uidSubject.next(msg.content as string);
+        this.uid = msg.content as string;
         break;
       }
       default: {
@@ -125,18 +118,19 @@ export class SessionService {
         break;
       }
     }
+    if (this.uid !== null && this.state !== null) {
+      console.log("Updating session");
+      this.sessionSubject.next({
+        name: this.name,
+        sessionId: this.sessionId,
+        uid: this.uid,
+        state: this.state,
+      });
+      this.router.navigate(['/']);
+    }
   }
 
   sessionValue(): Session | null {
     return this.sessionSubject.value;
   }
-
-  stateValue(): SessionState | null {
-    return this.stateSubject.value;
-  }
-
-  uidValue(): string | null {
-    return this.uidSubject.value;
-  }
-
 }
