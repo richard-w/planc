@@ -9,12 +9,12 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     <ul>
       <li *ngFor="let user of state?.users | keyvalue">
         {{user.value.name}}
-        <span *ngIf="reveal">: {{user.value.points}}</span>
-        <span *ngIf="!reveal && user.value.points != null">: x</span>
+        <span *ngIf="revealCards()">: {{user.value.points}}</span>
+        <span *ngIf="!revealCards() && user.value.points != null">: x</span>
       </li>
     </ul>
     <h2>Cards</h2>
-    <div *ngIf="displayCards">
+    <div *ngIf="displayCards()">
       <button mat-raised-button color="primary" *ngFor="let card of cards" (click)="setPoints(card)">{{card}}</button>
     </div>
     <h2>Control</h2>
@@ -25,32 +25,11 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
 export class MainComponent {
   session: Session | null = null;
   state: SessionState | null = null;
-  reveal: boolean = false;
-  displayCards: boolean = true;
   cards: number[] = [0, 1, 2, 3, 5, 8, 13, 20, 40, 60, 100];
 
   constructor(private sessionService: SessionService) {
     sessionService.session.subscribe((session: Session | null) => { this.session = session; });
-    sessionService.state.subscribe((state: SessionState | null) => {
-      this.state = state;
-      if (this.state != null) {
-        // Check whether to reveal cards
-        let uids = Object.keys(this.state.users);
-        this.reveal = true;
-        uids.forEach((uid: string) => {
-          let user = this.state?.users[uid];
-          if (user !== undefined && user.points === null) {
-            this.reveal = false;
-          }
-        });
-        // Check wheter to display card buttons
-        let ownUid = this.sessionService.uidValue() as string;
-        if (ownUid !== null) {
-          let ownUser = this.state?.users[ownUid] as UserState;
-          this.displayCards = ownUser.points === null;
-        }
-      }
-    });
+    sessionService.state.subscribe((state: SessionState | null) => { this.state = state; });
   }
 
   setPoints(points: number) {
@@ -59,5 +38,24 @@ export class MainComponent {
 
   resetPoints() {
     this.sessionService.resetPoints();
+  }
+
+  revealCards(): boolean {
+    if (this.state === null) return false;
+    var reveal = true;
+    Object.values(this.state.users).forEach((user) => {
+      if (user.points === null) {
+        reveal = false;
+      }
+    });
+    return reveal;
+  }
+
+  displayCards(): boolean | null {
+    if (this.state === null) return false;
+    let ownUid = this.sessionService.uidValue();
+    if (ownUid === null) return false;
+    let ownUser = this.state?.users[ownUid]!;
+    return ownUser.points === null;
   }
 }
