@@ -32,12 +32,13 @@ impl Session {
         // Get a unique user id for this session.
         let user_id = self
             .next_user_id
-            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            .to_string();
 
         // Add user to session state.
         self.update_state(|mut state| {
-            state.users.insert(user_id, UserState::default());
-            state
+            state.users.insert(user_id.clone(), UserState::default());
+            Some(state)
         })
         .await;
 
@@ -55,48 +56,66 @@ impl Session {
         });
 
         // Listen to messages from the connection.
-        if let Err(err) = self.handle_connection(conn, user_id).await {
+        if let Err(err) = self.handle_connection(conn, &user_id).await {
             log::error!("Error handling connection: {:?}", err);
         }
 
         // Remove user from state.
         self.update_state(|mut state| {
             state.users.remove(&user_id);
-            state
+            if state.admin.as_ref() == Some(&user_id) {
+                state.admin = None;
+            }
+            Some(state)
         })
         .await;
 
         Ok(())
     }
 
-    async fn handle_connection(&self, mut conn: Connection, user_id: i64) -> Result<()> {
+    async fn handle_connection(&self, mut conn: Connection, user_id: &str) -> Result<()> {
         while let Some(msg) = conn.recv().await {
             match msg? {
                 ClientMessage::NameChange(name) => {
                     self.update_state(|mut state| {
-                        state.users.get_mut(&user_id).unwrap().name = Some(name.clone());
-                        state
+                        state.users.get_mut(user_id).unwrap().name = Some(name.clone());
+                        Some(state)
                     })
                     .await;
                 }
                 ClientMessage::SetPoints(points) => {
                     self.update_state(|mut state| {
-                        state.users.get_mut(&user_id).unwrap().points = Some(points);
-                        state
+                        state.users.get_mut(user_id).unwrap().points = Some(points);
+                        Some(state)
                     })
                     .await;
                 }
                 ClientMessage::ResetPoints => {
                     self.update_state(|mut state| {
-                        for user in state.users.values_mut() {
-                            user.points = None;
+                        if state.admin.as_deref() == Some(user_id) {
+                            for user in state.users.values_mut() {
+                                user.points = None;
+                            }
+                            Some(state)
+                        } else {
+                            None
                         }
-                        state
                     })
                     .await;
                 }
                 ClientMessage::Whoami => {
-                    conn.send(&ServerMessage::Whoami(user_id)).await?;
+                    conn.send(&ServerMessage::Whoami(user_id.to_string())).await?;
+                }
+                ClientMessage::ClaimSession => {
+                    self.update_state(|mut state| {
+                        if state.admin.is_none() {
+                            state.admin = Some(user_id.to_string());
+                            Some(state)
+                        } else {
+                            None
+                        }
+                    })
+                    .await;
                 }
             }
         }
@@ -105,12 +124,13 @@ impl Session {
 
     async fn update_state<F>(&self, mut func: F)
     where
-        F: FnMut(SessionState) -> SessionState,
+        F: FnMut(SessionState) -> Option<SessionState>,
     {
         let session_state_tx = self.session_state_tx.lock().await;
         let current_state = session_state_tx.borrow().clone();
-        let new_state = func(current_state);
-        session_state_tx.send(new_state).unwrap();
+        if let Some(new_state) = func(current_state) {
+            session_state_tx.send(new_state).unwrap();
+        }
     }
 }
 
@@ -122,7 +142,8 @@ impl Drop for Session {
 
 #[derive(Debug, Clone, Default, Serialize)]
 struct SessionState {
-    pub users: HashMap<i64, UserState>,
+    pub users: HashMap<String, UserState>,
+    pub admin: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -138,11 +159,12 @@ enum ClientMessage {
     SetPoints(i32),
     ResetPoints,
     Whoami,
+    ClaimSession,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "tag", content = "content")]
 enum ServerMessage {
     State(SessionState),
-    Whoami(i64),
+    Whoami(String),
 }

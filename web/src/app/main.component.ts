@@ -17,8 +17,15 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     <div *ngIf="displayCards()">
       <button mat-raised-button color="primary" *ngFor="let card of cards" (click)="setPoints(card)">{{card}}</button>
     </div>
-    <h2>Control</h2>
-    <button mat-raised-button color="primary" (click)="resetPoints()">Reset</button>
+    <div *ngIf="displayControl()">
+      <h2>Control</h2>
+      <button mat-raised-button color="primary" (click)="resetPoints()">Reset</button>
+    </div>
+    <div *ngIf="displayClaimSession()">
+      <h2>Control</h2>
+      <button mat-raised-button color="primary" (click)="claimSession()">Claim Session</button>
+    </div>
+
   `,
   styles: []
 })
@@ -38,6 +45,10 @@ export class MainComponent {
     this.sessionService.resetPoints();
   }
 
+  claimSession() {
+    this.sessionService.claimSession();
+  }
+
   revealCards(): boolean {
     if (this.session === null) return false;
     var reveal = true;
@@ -52,5 +63,15 @@ export class MainComponent {
   displayCards(): boolean {
     if (this.session === null) return false;
     return this.session.state.users[this.session.uid]!.points === null;
+  }
+
+  displayControl(): boolean {
+    if (this.session == null) return false;
+    return this.session.uid === this.session.state.admin;
+  }
+
+  displayClaimSession(): boolean {
+    if (this.session == null) return false;
+    return this.session.state.admin === null;
   }
 }

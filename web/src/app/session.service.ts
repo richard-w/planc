@@ -12,6 +12,7 @@ export class Session {
 
 export class SessionState {
   users!: UserStateMap;
+  admin!: string;
 }
 
 export interface UserStateMap {
@@ -99,6 +100,10 @@ export class SessionService {
 
   resetPoints() {
     this.webSocket?.next({ tag: "ResetPoints", content: null });
+  }
+
+  claimSession() {
+    this.webSocket?.next({ tag: "ClaimSession", content: null });
   }
 
   handleServerMessage(msg: Message) {
