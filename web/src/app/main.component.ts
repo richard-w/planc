@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { MatButtonToggleChange } from '@angular/material/button-toggle';
 import { SessionService, Session, SessionState, UserState } from './session.service';
 
 @Component({
@@ -13,9 +14,11 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
         <span *ngIf="!revealCards() && user.value.points != null">: x</span>
       </li>
     </ul>
-    <h2>Cards</h2>
     <div *ngIf="displayCards()">
-      <button mat-raised-button color="primary" *ngFor="let card of cards" (click)="setPoints(card)">{{card}}</button>
+      <h2>Cards</h2>
+      <mat-button-toggle-group (change)="setPoints($event)">
+        <mat-button-toggle color="primary" *ngFor="let card of cards" value="{{card}}">{{card}}</mat-button-toggle>
+      </mat-button-toggle-group>
     </div>
     <div *ngIf="displayControl()">
       <h2>Control</h2>
@@ -32,13 +35,14 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
 export class MainComponent {
   session: Session | null = null;
   cards: number[] = [0, 1, 2, 3, 5, 8, 13, 20, 40, 60, 100];
+  selectedCard: number = -1;
 
   constructor(private sessionService: SessionService) {
     sessionService.session.subscribe((session: Session | null) => { this.session = session; });
   }
 
-  setPoints(points: number) {
-    this.sessionService.setPoints(points);
+  setPoints(event: MatButtonToggleChange) {
+    this.sessionService.setPoints(event.value);
   }
 
   resetPoints() {
@@ -61,13 +65,11 @@ export class MainComponent {
   }
 
   displayCards(): boolean {
-    if (this.session === null) return false;
-    return this.session.state.users[this.session.uid]!.points === null;
+    return !this.revealCards();
   }
 
   displayControl(): boolean {
-    if (this.session == null) return false;
-    return this.session.uid === this.session.state.admin;
+    return this.session !== null && this.session.uid === this.session.state.admin;
   }
 
   displayClaimSession(): boolean {

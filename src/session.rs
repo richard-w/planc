@@ -52,7 +52,7 @@ impl Session {
                     // Mask points so they are not visible from the console
                     new_state.users.values_mut().for_each(|user| {
                         if user.points.is_some() {
-                            user.points = Some(-1);
+                            user.points = Some("-1".to_string());
                         }
                     });
                 }
@@ -97,7 +97,7 @@ impl Session {
                 }
                 ClientMessage::SetPoints(points) => {
                     self.update_state(|mut state| {
-                        state.users.get_mut(user_id).unwrap().points = Some(points);
+                        state.users.get_mut(user_id).unwrap().points = Some(points.clone());
                         Result::Ok(state)
                     })
                     .await
@@ -165,14 +165,14 @@ struct SessionState {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct UserState {
     pub name: Option<String>,
-    pub points: Option<i32>,
+    pub points: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "tag", content = "content")]
 enum ClientMessage {
     NameChange(String),
-    SetPoints(i32),
+    SetPoints(String),
     ResetPoints,
     Whoami,
     ClaimSession,
