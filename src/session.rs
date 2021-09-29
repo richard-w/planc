@@ -47,7 +47,15 @@ impl Session {
         let mut session_state_rx = self.session_state_rx.clone();
         tokio::spawn(async move {
             while session_state_rx.changed().await.is_ok() {
-                let new_state = session_state_rx.borrow().to_owned();
+                let mut new_state = session_state_rx.borrow().to_owned();
+                if new_state.users.values().any(|user| user.points.is_none()) {
+                    // Mask points so they are not visible from the console
+                    new_state.users.values_mut().for_each(|user| {
+                        if user.points.is_some() {
+                            user.points = Some(-1);
+                        }
+                    });
+                }
                 if let Err(err) = sender.send(&ServerMessage::State(new_state)).await {
                     log::error!("Sending session state failed: {:?}", err);
                     break;
