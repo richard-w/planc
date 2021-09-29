@@ -3,6 +3,8 @@ use std::fmt;
 #[derive(Debug, Clone, Copy)]
 pub enum Error {
     InvalidMessage,
+    InsufficientPermissions,
+    DuplicateName,
 }
 
 impl fmt::Display for Error {

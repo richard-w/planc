@@ -75,10 +75,10 @@ export class SessionService {
     // Subscribe to server messages.
     this.webSocket.subscribe(msg => this.handleServerMessage(msg));
 
-    // Send the name change message to initialize the connection.
-    this.webSocket.next({tag: "NameChange", content: name });
     // Request the user id.
     this.webSocket.next({tag: "Whoami", content: null });
+    // Send the name change message to initialize the connection.
+    this.webSocket.next({tag: "NameChange", content: name });
   }
 
   leaveSession() {
@@ -116,6 +116,12 @@ export class SessionService {
       case "Whoami": {
         console.log("Received 'Whoami' Message" + JSON.stringify(msg.content));
         this.uid = msg.content as string;
+        break;
+      }
+      case "Error": {
+        console.log("Received 'Error' Message" + JSON.stringify(msg.content));
+        alert("Error: " + msg.content);
+        this.leaveSession();
         break;
       }
       default: {
