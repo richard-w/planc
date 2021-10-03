@@ -14,12 +14,6 @@ else
 	tty_flag=""
 fi
 
-if [[ ${PROFILE} == "release" ]]; then
-	prod_flag="--prod"
-else
-	prod_flag=""
-fi
-
 docker run \
 	--rm \
 	--interactive \
@@ -27,4 +21,4 @@ docker run \
 	--volume $(pwd):/work \
 	--workdir /work \
 	planc-frontend-build \
-	ng build ${prod_flag}
+	ng build
