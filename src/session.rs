@@ -40,7 +40,7 @@ impl Session {
         // Add user to session state.
         let add_user_result = self.update_state(|mut state| {
             if state.users.len() >= self.max_users {
-                Err(Error::MaxSessionsExceeded.into())
+                Err(Error::MaxUsersExceeded.into())
             } else {
                 state.users.insert(user_id.clone(), UserState::default());
                 Result::Ok(state)
@@ -49,6 +49,7 @@ impl Session {
         .await;
         if let Err(err) = add_user_result {
             conn.send(&ServerMessage::Error(format!("Error joining session: {}", err))).await?;
+            return Ok(());
         }
 
         // Subscribe client to state updates.
