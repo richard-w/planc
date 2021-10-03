@@ -5,6 +5,8 @@ pub enum Error {
     InvalidMessage,
     InsufficientPermissions,
     DuplicateName,
+    MaxSessionsExceeded,
+    MaxUsersExceeded,
 }
 
 impl fmt::Display for Error {

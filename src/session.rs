@@ -8,13 +8,14 @@ use tokio::sync::Mutex;
 pub struct Session {
     ctx: Arc<ServiceContext>,
     session_id: String,
+    max_users: usize,
     session_state_tx: Mutex<watch::Sender<SessionState>>,
     session_state_rx: watch::Receiver<SessionState>,
     next_user_id: AtomicI64,
 }
 
 impl Session {
-    pub fn new(ctx: Arc<ServiceContext>, session_id: &str) -> Self {
+    pub fn new(ctx: Arc<ServiceContext>, session_id: &str, max_users: usize) -> Self {
         let session_id = session_id.to_string();
         let (session_state_tx, session_state_rx) = watch::channel(SessionState::default());
         let session_state_tx = Mutex::new(session_state_tx);
@@ -22,13 +23,14 @@ impl Session {
         Self {
             ctx,
             session_id,
+            max_users,
             session_state_tx,
             session_state_rx,
             next_user_id,
         }
     }
 
-    pub async fn join(&self, conn: Connection) -> Result<()> {
+    pub async fn join(&self, mut conn: Connection) -> Result<()> {
         // Get a unique user id for this session.
         let user_id = self
             .next_user_id
@@ -36,11 +38,18 @@ impl Session {
             .to_string();
 
         // Add user to session state.
-        self.update_state(|mut state| {
-            state.users.insert(user_id.clone(), UserState::default());
-            Result::Ok(state)
+        let add_user_result = self.update_state(|mut state| {
+            if state.users.len() >= self.max_users {
+                Err(Error::MaxSessionsExceeded.into())
+            } else {
+                state.users.insert(user_id.clone(), UserState::default());
+                Result::Ok(state)
+            }
         })
-        .await?;
+        .await;
+        if let Err(err) = add_user_result {
+            conn.send(&ServerMessage::Error(format!("Error joining session: {}", err))).await?;
+        }
 
         // Subscribe client to state updates.
         let mut sender = conn.sender();
@@ -157,7 +166,7 @@ impl Drop for Session {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
-struct SessionState {
+pub struct SessionState {
     pub users: HashMap<String, UserState>,
     pub admin: Option<String>,
 }
@@ -170,7 +179,7 @@ pub struct UserState {
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "tag", content = "content")]
-enum ClientMessage {
+pub enum ClientMessage {
     NameChange(String),
     SetPoints(String),
     ResetPoints,
@@ -180,7 +189,7 @@ enum ClientMessage {
 
 #[derive(Debug, Serialize)]
 #[serde(tag = "tag", content = "content")]
-enum ServerMessage {
+pub enum ServerMessage {
     State(SessionState),
     Whoami(String),
     Error(String),

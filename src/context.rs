@@ -2,14 +2,22 @@ use super::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, Weak};
 
-#[derive(Default)]
+pub struct ServiceContextConfig {
+    pub max_sessions: usize,
+    pub max_users: usize,
+}
+
 pub struct ServiceContext {
+    config: ServiceContextConfig,
     sessions: Mutex<HashMap<String, Weak<Session>>>,
 }
 
 impl ServiceContext {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(config: ServiceContextConfig) -> Self {
+        Self {
+            config,
+            sessions: Mutex::default(),
+        }
     }
 
     /// Get a pointer to a session.
@@ -27,8 +35,13 @@ impl ServiceContext {
             }
         }
 
+        // Check if maximum sessions would be exceeded.
+        if sessions.len() >= self.config.max_sessions {
+            return Err(Error::MaxSessionsExceeded.into());
+        }
+
         // Create new session.
-        let session = Arc::new(Session::new(self.clone(), session_id));
+        let session = Arc::new(Session::new(self.clone(), session_id, self.config.max_users));
         sessions.insert(session_id.to_string(), Arc::downgrade(&session));
         Ok(session)
     }
@@ -53,7 +66,10 @@ mod tests {
 
     #[test]
     fn ctx_refcounting_test() {
-        let ctx = Arc::new(ServiceContext::new());
+        let ctx = Arc::new(ServiceContext::new(ServiceContextConfig {
+            max_sessions: 16,
+            max_users: 8,
+        }));
         assert_eq!(ctx.sessions.lock().unwrap().len(), 0);
 
         let session = ctx.get_session("abcd");

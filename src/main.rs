@@ -61,10 +61,24 @@ async fn main() {
             .long("bind-port")
             .required(true)
         )
+        .arg(clap::Arg::with_name("max_sessions")
+            .value_name("max_sessions")
+            .help("Maximum number of concurrent sessions")
+            .long("max-sessions")
+            .default_value("8")
+        )
+        .arg(clap::Arg::with_name("max_users")
+            .value_name("max_users")
+            .help("Maximum number of users in a session")
+            .long("max-users")
+            .default_value("16")
+        )
         .get_matches();
 
     let arg_bind_address = args.value_of("bind_address").unwrap();
     let arg_bind_port = args.value_of("bind_port").unwrap();
+    let arg_max_sessions = args.value_of("max_sessions").unwrap().parse().expect("Failed to parse max_sessions");
+    let arg_max_users = args.value_of("max_users").unwrap().parse().expect("Failed to parse max_users");
     log::info!("Binding to {}:{}", arg_bind_address, arg_bind_port);
 
     let bind_address: IpAddr = arg_bind_address
@@ -73,20 +87,23 @@ async fn main() {
     let bind_port: u16 = arg_bind_port.parse().expect("Failed to parse bind port");
     let socket_address = SocketAddr::new(bind_address, bind_port);
 
-    let server = Server::bind(&socket_address).serve(MakeService::new());
+    let ctx = Arc::new(ServiceContext::new(ServiceContextConfig {
+        max_sessions: arg_max_sessions,
+        max_users: arg_max_users,
+    }));
+    let server = Server::bind(&socket_address).serve(MakeService::new(ctx));
     log::info!("Server started");
 
     server.await.expect("Server task failure");
 }
 
 struct MakeService {
-    context: Arc<ServiceContext>,
+    ctx: Arc<ServiceContext>,
 }
 
 impl MakeService {
-    pub fn new() -> Self {
-        let context = Arc::new(ServiceContext::new());
-        Self { context }
+    pub fn new(ctx: Arc<ServiceContext>) -> Self {
+        Self { ctx }
     }
 }
 
@@ -100,8 +117,8 @@ impl hyper::service::Service<&AddrStream> for MakeService {
     }
 
     fn call(&mut self, _conn: &AddrStream) -> Self::Future {
-        let context = self.context.clone();
-        Box::pin(async move { Ok(Service::new(context)) })
+        let ctx = self.ctx.clone();
+        Box::pin(async move { Ok(Service::new(ctx)) })
     }
 }
 
