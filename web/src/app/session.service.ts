@@ -71,14 +71,13 @@ export class SessionService {
     const webSocketUrl: string = SessionService.webSocketUrl(sessionId);
     this.webSocket = webSocket({
       url: webSocketUrl,
-      closeObserver: {
-        next: (closeEvent) => {
-          this.leaveSession();
-        },
-      },
     });
     // Subscribe to server messages.
-    this.webSocket.subscribe(msg => this.handleServerMessage(msg));
+    this.webSocket.subscribe(
+      msg => this.handleServerMessage(msg),
+      err => this.handleError(err),
+      () => this.handleComplete(),
+    );
 
     // Request the user id.
     this.webSocket.next({tag: "Whoami", content: null });
@@ -144,6 +143,14 @@ export class SessionService {
       });
       this.router.navigate(['/']);
     }
+  }
+
+  handleError(err: any) {
+    this.leaveSession();
+  }
+
+  handleComplete() {
+    this.leaveSession();
   }
 
   sessionValue(): Session | null {
