@@ -1,0 +1,4 @@
+/.git
+/web/dist
+/web/node_modules
+/target
