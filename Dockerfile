@@ -4,11 +4,16 @@ FROM node
 RUN npm install -g @angular/cli
 # Add user and group.
 USER node:node
+# Copy package info.
+ADD --chown=node:node web/package.json web/package-lock.json /work/
+# Set working directory.
+WORKDIR /work
+# Install dependencies.
+RUN npm install
 # Copy sources.
 ADD --chown=node:node web /work
 # Build frontend.
-WORKDIR /work
-RUN npm install && ng build
+RUN ng build
 
 # Backend build image.
 FROM rust
