@@ -49,21 +49,26 @@ export class SessionService {
     this.session = this.sessionSubject.asObservable();
   }
 
+  private static webSocketUrl(sessionId: string): string {
+    // Establish connection to session.
+    var url: string = '';
+    if (window.location.protocol === 'https:') {
+      url += 'wss://';
+    } else {
+      url += 'ws://';
+    }
+    url += window.location.hostname
+    if (window.location.port !== "") {
+      url += ':' + window.location.port;
+    }
+    url += '/api/';
+    url += sessionId;
+    return url;
+  }
+
   joinSession(name: string, sessionId: string) {
     // Establish connection to session.
-    var webSocketUrl: string = '';
-    if (window.location.protocol === 'https:') {
-      webSocketUrl += 'wss://';
-    } else {
-      webSocketUrl += 'ws://';
-    }
-    webSocketUrl += window.location.hostname
-    if (window.location.port !== "") {
-      webSocketUrl += ':' + window.location.port;
-    }
-    webSocketUrl += '/api/';
-    webSocketUrl += sessionId;
-    
+    const webSocketUrl: string = SessionService.webSocketUrl(sessionId);
     this.webSocket = webSocket({
       url: webSocketUrl,
       closeObserver: {
