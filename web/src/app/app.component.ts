@@ -27,7 +27,7 @@ export class AppComponent {
     private router: Router,
     private sessionService: SessionService,
   ) {
-    this.sessionService.session.subscribe((session) => {
+    this.sessionService.session$.subscribe((session) => {
       this.isLoggedIn = session != null;
     });
   }

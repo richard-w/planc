@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatButtonToggleChange } from '@angular/material/button-toggle';
 import { SessionService, Session, SessionState, UserState } from './session.service';
 
@@ -37,8 +38,22 @@ export class MainComponent {
   cards: number[] = [0, 1, 2, 3, 5, 8, 13, 20, 40, 60, 100];
   selectedCard: number = -1;
 
-  constructor(private sessionService: SessionService) {
-    sessionService.session.subscribe((session: Session | null) => { this.session = session; });
+  constructor(
+    private sessionService: SessionService,
+    private router: Router,
+  ) {
+    sessionService.session$.subscribe(
+      (session: Session | null) => {
+        this.session = session;
+        if (this.session === null) {
+          this.router.navigate(['/login']);
+        }
+      },
+      (err) => {
+        alert(err);
+        this.router.navigate(['/login']);
+      },
+    );
   }
 
   setPoints(event: MatButtonToggleChange) {

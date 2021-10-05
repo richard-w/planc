@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Router } from '@angular/router';
 import { Subject, BehaviorSubject, Observable } from 'rxjs';
+import { takeWhile } from 'rxjs/operators';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 
 export class Session {
@@ -34,19 +34,14 @@ class Message {
 })
 export class SessionService {
   private webSocket: WebSocketSubject<Message> | null = null;
+
   private sessionSubject: BehaviorSubject<Session | null>;
-  public session: Observable<Session | null>;
+  public session$: Observable<Session | null>;
+  public session(): Session | null { return this.sessionSubject.value; }
 
-  private name: string = '';
-  private sessionId: string = '';
-  private uid: string | null = null;
-  private state: SessionState | null = null;
-
-  constructor(
-    private router: Router,
-  ) {
+  constructor() {
     this.sessionSubject = new BehaviorSubject<Session | null>(null);
-    this.session = this.sessionSubject.asObservable();
+    this.session$ = this.sessionSubject.asObservable();
   }
 
   private static webSocketUrl(sessionId: string): string {
@@ -66,39 +61,107 @@ export class SessionService {
     return url;
   }
 
-  joinSession(name: string, sessionId: string) {
-    // Establish connection to session.
-    const webSocketUrl: string = SessionService.webSocketUrl(sessionId);
+  public async joinSession(sessionId: string, name: string): Promise<void> {
+    if (this.session() != null) {
+      throw new Error("Already joined to a session");
+    }
+
+    // Open websocket
     this.webSocket = webSocket({
-      url: webSocketUrl,
+        url: SessionService.webSocketUrl(sessionId),
     });
-    // Subscribe to server messages.
+    // Create new subject and use it to broadcast websocket messages.
+    // Necessary because WebSocketSubject closes and reopens the connection
+    // on the second subsecribe apparently.
+    let messageSubject = new Subject<Message>();
     this.webSocket.subscribe(
-      msg => this.handleServerMessage(msg),
-      err => this.handleError(err),
-      () => this.handleComplete(),
+      (msg) => messageSubject.next(msg),
+      (err) => messageSubject.next(err),
+      () => messageSubject.complete(),
     );
 
     // Request the user id.
     this.webSocket.next({tag: "Whoami", content: null });
-    // Send the name change message to initialize the connection.
+    // Change the username. Also triggers a session broadcast.
     this.webSocket.next({tag: "NameChange", content: name });
+
+    // Receive session information.
+    var uid: string | null = null;
+    var state: SessionState | null = null;
+    await messageSubject
+      .pipe(takeWhile((message) => {
+        console.log("Got initial message: " + JSON.stringify(message));
+        switch (message.tag) {
+          case "Error": {
+            this.webSocket?.complete();
+            throw new Error(message.content);
+            return false;
+          }
+          case "Whoami": {
+            uid = message.content as string;
+            break;
+          }
+          case "State": {
+            state = message.content as SessionState;
+            break;
+          }
+          default: {
+            throw new Error("Unexpected message tag: " + message.tag);
+          }
+        }
+        return uid === null || state === null;
+      }))
+      .toPromise();
+
+    // Update webSocket and session members.
+    this.sessionSubject.next({
+      name: name,
+      sessionId: sessionId,
+      uid: uid!,
+      state: state!,
+    });
+
+    // React to state changes and errors.
+    messageSubject.subscribe(
+      (message) => {
+        console.log("Got update: " + JSON.stringify(message));
+        switch (message.tag) {
+          case "Error": {
+            this.webSocket?.complete();
+            this.sessionSubject.error(new Error(message.content));
+            break;
+          }
+          case "State": {
+            let session = this.session();
+            if (session !== null) {
+              session.state = message.content as SessionState;
+              this.sessionSubject.next(session);
+            }
+            break;
+          }
+          default: {
+            console.log("Unexpected message tag: " + JSON.stringify(message));
+            break;
+          }
+        }
+      },
+      (err) => {
+        console.log("Got update error: " + err);
+        this.webSocket?.complete();
+        this.sessionSubject.error(err);
+      },
+      () => {
+        console.log("Updates completed");
+      }
+    );
   }
 
-  leaveSession() {
-    if (this.webSocket != null) {
-      this.webSocket.complete();
-      this.webSocket = null;
-    }
+  public leaveSession() {
+    this.webSocket?.complete();
     this.sessionSubject.next(null);
-    this.name = '';
-    this.sessionId = '';
-    this.uid = null;
-    this.state = null;
-    this.router.navigate(['/login']);
   }
 
-  setPoints(points: number) {
+  public setPoints(points: number) {
     this.webSocket?.next({ tag: "SetPoints", content: points });
   }
 
@@ -108,52 +171,5 @@ export class SessionService {
 
   claimSession() {
     this.webSocket?.next({ tag: "ClaimSession", content: null });
-  }
-
-  handleServerMessage(msg: Message) {
-    switch (msg.tag) {
-      case "State": {
-        console.log("Received 'State' Message" + JSON.stringify(msg.content));
-        this.state = msg.content as SessionState;
-        break;
-      }
-      case "Whoami": {
-        console.log("Received 'Whoami' Message" + JSON.stringify(msg.content));
-        this.uid = msg.content as string;
-        break;
-      }
-      case "Error": {
-        console.log("Received 'Error' Message" + JSON.stringify(msg.content));
-        alert("Error: " + msg.content);
-        this.leaveSession();
-        break;
-      }
-      default: {
-        console.log("Undefined message: " + msg.content);
-        break;
-      }
-    }
-    if (this.uid !== null && this.state !== null) {
-      console.log("Updating session");
-      this.sessionSubject.next({
-        name: this.name,
-        sessionId: this.sessionId,
-        uid: this.uid,
-        state: this.state,
-      });
-      this.router.navigate(['/']);
-    }
-  }
-
-  handleError(err: any) {
-    this.leaveSession();
-  }
-
-  handleComplete() {
-    this.leaveSession();
-  }
-
-  sessionValue(): Session | null {
-    return this.sessionSubject.value;
   }
 }

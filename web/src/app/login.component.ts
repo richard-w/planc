@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { SessionService } from './session.service';
 
@@ -47,16 +48,27 @@ export class LoginDialogComponent {
 export class LoginComponent implements OnInit {
   constructor(
     private dialog: MatDialog,
+    private router: Router,
     private sessionService: SessionService,
   ) {}
 
   ngOnInit() {
+    this.openLoginDialog();
+  }
+
+  openLoginDialog() {
     const dialogRef = this.dialog.open(LoginDialogComponent, {
       closeOnNavigation: false,
       disableClose: true,
     });
     dialogRef.afterClosed().subscribe(result => {
-      this.sessionService.joinSession(result.name, result.sessionId);
+      this.sessionService
+        .joinSession(result.sessionId, result.name)
+        .then(() => this.router.navigate(['/']))
+        .catch(err => {
+          alert(err);
+          this.openLoginDialog();
+        });
     });
   }
 }
