@@ -94,7 +94,7 @@ impl Session {
     async fn handle_connection(&self, mut conn: Connection, user_id: &str) -> Result<()> {
         while let Some(msg) = conn.recv().await {
             let result = match msg? {
-                ClientMessage::NameChange(name) => {
+                ClientMessage::NameChange(name) if name.len() <= 32 => {
                     self.update_state(|mut state| {
                         if state.users.values().all(|user| user.name.as_ref() != Some(&name)) {
                             state.users.get_mut(user_id).unwrap().name = Some(name.clone());
@@ -105,7 +105,7 @@ impl Session {
                     })
                     .await
                 }
-                ClientMessage::SetPoints(points) => {
+                ClientMessage::SetPoints(points) if points.len() <= 8 => {
                     self.update_state(|mut state| {
                         state.users.get_mut(user_id).unwrap().points = Some(points.clone());
                         Result::Ok(state)
@@ -139,6 +139,7 @@ impl Session {
                     })
                     .await
                 }
+                _ => Err(Error::InvalidMessage.into()),
             };
             if let Err(err) = result {
                 conn.send(&ServerMessage::Error(err.to_string())).await?;
