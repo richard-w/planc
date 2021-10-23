@@ -10,6 +10,9 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     <h2>Users</h2>
     <ul>
       <li *ngFor="let user of session?.state?.users | keyvalue">
+        <button mat-icon-button *ngIf="displayControl()" (click)="kickUser(user.key)">
+          <mat-icon>person_remove</mat-icon>
+        </button>
         {{user.value.name}}
         <span *ngIf="revealCards()">: {{user.value.points}}</span>
         <span *ngIf="!revealCards() && user.value.points != null">: x</span>
@@ -68,6 +71,10 @@ export class MainComponent {
 
   claimSession() {
     this.sessionService.claimSession();
+  }
+
+  kickUser(userId: string) {
+    this.sessionService.kickUser(userId);
   }
 
   private forEachUser(f: (user: UserState) => void): void {

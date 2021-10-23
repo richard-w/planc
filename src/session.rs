@@ -56,11 +56,30 @@ impl Session {
         // Subscribe client to state updates.
         let mut sender = conn.sender();
         let mut session_state_rx = self.session_state_rx.clone();
+        let cloned_user_id = user_id.clone();
         tokio::spawn(async move {
+            let user_id = cloned_user_id;
             while session_state_rx.changed().await.is_ok() {
+                // Clone state for some ad-hoc modifications and checks.
                 let mut new_state = session_state_rx.borrow().to_owned();
+
+                // Check if this user was kicked and stop sending state in that case.
+                if let Some(user) = new_state.users.get(&user_id) {
+                    if user.kicked {
+                        if let Err(err) = sender.send(&ServerMessage::Error("You have been kicked from the session".to_string())).await {
+                            log::error!("Sending kick message failed: {:?}", err);
+                            break;
+                        }
+                    }
+                } else {
+                    log::error!("Invalid session state. Cannot find this user.");
+                }
+
+                // Mask kicked users.
+                new_state.users.retain(|_, user| !user.kicked);
+
+                // Mask points so they are not visible from the console.
                 if new_state.users.values().any(|user| user.points.is_none()) {
-                    // Mask points so they are not visible from the console
                     new_state.users.values_mut().for_each(|user| {
                         if user.points.is_some() {
                             user.points = Some("-1".to_string());
@@ -103,6 +122,12 @@ impl Session {
 
     async fn handle_connection(&self, mut conn: Connection, user_id: &str) -> Result<()> {
         while let Some(msg) = conn.recv().await {
+            // Terminate the connection for kicked users.
+            let user_state = self.user_state(user_id).await?;
+            if user_state.kicked {
+                return Err(Error::UserKicked.into());
+            }
+
             let result = match msg? {
                 ClientMessage::NameChange(name) if name.len() <= 32 => {
                     self.update_state(|mut state| {
@@ -149,6 +174,21 @@ impl Session {
                     })
                     .await
                 }
+                ClientMessage::KickUser(kickee_id) => {
+                    self.update_state(|mut state| {
+                        if state.admin.as_deref() == Some(user_id) {
+                            if let Some(kickee) = state.users.get_mut(&kickee_id) {
+                                kickee.kicked = true;
+                                Ok(state)
+                            } else {
+                                Err(Error::UnknownUserId.into())
+                            }
+                        } else {
+                            Err(Error::InsufficientPermissions.into())
+                        }
+                    })
+                    .await
+                }
                 _ => Err(Error::InvalidMessage.into()),
             };
             if let Err(err) = result {
@@ -169,6 +209,16 @@ impl Session {
         session_state_tx.send(new_state).unwrap();
         Ok(())
     }
+
+    async fn user_state(&self, user_id: &str) -> Result<UserState> {
+        let session_state_tx = self.session_state_tx.lock().await;
+        let current_state = session_state_tx.borrow();
+        if let Some(user_state) = current_state.users.get(user_id) {
+            Ok(user_state.clone())
+        } else {
+            Err(Error::UnknownUserId.into())
+        }
+    }
 }
 
 impl Drop for Session {
@@ -187,6 +237,8 @@ pub struct SessionState {
 pub struct UserState {
     pub name: Option<String>,
     pub points: Option<String>,
+    #[serde(skip)]
+    pub kicked: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -197,6 +249,7 @@ pub enum ClientMessage {
     ResetPoints,
     Whoami,
     ClaimSession,
+    KickUser(String),
 }
 
 #[derive(Debug, Serialize)]

@@ -198,4 +198,8 @@ export class SessionService {
   claimSession() {
     this.webSocket?.send(JSON.stringify({ tag: "ClaimSession", content: null }));
   }
+
+  kickUser(userId: string) {
+    this.webSocket?.send(JSON.stringify({ tag: "KickUser", content: userId }));
+  }
 }

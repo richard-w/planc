@@ -7,6 +7,8 @@ pub enum Error {
     DuplicateName,
     MaxSessionsExceeded,
     MaxUsersExceeded,
+    UnknownUserId,
+    UserKicked,
 }
 
 impl fmt::Display for Error {
