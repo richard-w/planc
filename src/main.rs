@@ -156,13 +156,3 @@ async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Respons
         _ => web::route_request(req).await,
     }
 }
-
-pub fn generate_token(size: usize) -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    std::iter::repeat(())
-        .map(|_| rng.sample(rand::distributions::Alphanumeric))
-        .map(char::from)
-        .take(size)
-        .collect()
-}
