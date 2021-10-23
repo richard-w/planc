@@ -42,18 +42,15 @@ export class MainComponent {
     private sessionService: SessionService,
     private router: Router,
   ) {
-    sessionService.session$.subscribe(
-      (session: Session | null) => {
-        this.session = session;
-        if (this.session === null) {
-          this.router.navigate(['/login']);
-        }
-      },
-      (err) => {
-        alert(err);
+    sessionService.session$.subscribe((session: Session | null) => {
+      this.session = session;
+      if (this.session === null) {
         this.router.navigate(['/login']);
-      },
-    );
+      }
+    });
+    sessionService.error$.subscribe((err: Error) => {
+      alert(err);
+    });
   }
 
   setPoints(event: MatButtonToggleChange) {

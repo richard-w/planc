@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Subject, BehaviorSubject, Observable } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 
 export class Session {
   name!: string;
@@ -33,15 +32,19 @@ class Message {
   providedIn: 'root'
 })
 export class SessionService {
-  private webSocket: WebSocketSubject<Message> | null = null;
+  private webSocket: WebSocket | null = null;
 
   private sessionSubject: BehaviorSubject<Session | null>;
   public session$: Observable<Session | null>;
   public session(): Session | null { return this.sessionSubject.value; }
+  private errorSubject: Subject<Error>;
+  public error$: Observable<Error>;
 
   constructor() {
     this.sessionSubject = new BehaviorSubject<Session | null>(null);
     this.session$ = this.sessionSubject.asObservable();
+    this.errorSubject = new Subject<Error>();
+    this.error$ = this.errorSubject.asObservable();
   }
 
   private static webSocketUrl(sessionId: string): string {
@@ -66,24 +69,32 @@ export class SessionService {
       throw new Error("Already joined to a session");
     }
 
-    // Open websocket
-    this.webSocket = webSocket({
-        url: SessionService.webSocketUrl(sessionId),
+    // Open websocket. Not using rxjs WebSocketSubject here since it displays
+    // some surprising behavior.
+    this.webSocket = new WebSocket(SessionService.webSocketUrl(sessionId));
+    // Wait for the websocket to become open.
+    await new Promise<void>((resolve, reject) => {
+      this.webSocket!.onopen = (event) => {
+        resolve();
+      };
+      this.webSocket!.onerror = (event) => {
+        reject();
+      };
+      this.webSocket!.onclose = (event) => {
+        reject();
+      };
     });
-    // Create new subject and use it to broadcast websocket messages.
-    // Necessary because WebSocketSubject closes and reopens the connection
-    // on the second subsecribe apparently.
+
+    // Wrap the websocket in a subject.
     let messageSubject = new Subject<Message>();
-    this.webSocket.subscribe(
-      (msg) => messageSubject.next(msg),
-      (err) => messageSubject.next(err),
-      () => messageSubject.complete(),
-    );
+    this.webSocket.onmessage = (event) => messageSubject.next(JSON.parse(event.data));
+    this.webSocket.onerror = (err) => messageSubject.error(err);
+    this.webSocket.onclose = (event) => messageSubject.complete();
 
     // Request the user id.
-    this.webSocket.next({tag: "Whoami", content: null });
+    this.webSocket.send(JSON.stringify({tag: "Whoami", content: null }));
     // Change the username. Also triggers a session broadcast.
-    this.webSocket.next({tag: "NameChange", content: name });
+    this.webSocket.send(JSON.stringify({tag: "NameChange", content: name }));
 
     // Receive session information.
     var uid: string | null = null;
@@ -93,7 +104,7 @@ export class SessionService {
         console.log("Got initial message: " + JSON.stringify(message));
         switch (message.tag) {
           case "Error": {
-            this.webSocket?.complete();
+            this.webSocket?.close();
             throw new Error(message.content);
             return false;
           }
@@ -130,8 +141,7 @@ export class SessionService {
         console.log("Got message: " + JSON.stringify(message));
         switch (message.tag) {
           case "Error": {
-            this.webSocket?.complete();
-            this.sessionSubject.error(new Error(message.content));
+            this.leaveSessionWithError(new Error(message.content));
             break;
           }
           case "State": {
@@ -151,31 +161,38 @@ export class SessionService {
           }
         }
       },
-      (err) => {
-        console.log("Got update error: " + err);
-        this.webSocket?.complete();
-        this.sessionSubject.error(err);
+      (err: Error) => {
+        console.log("Got update error: " + JSON.stringify(err));
+        this.leaveSessionWithError(err);
       },
       () => {
         console.log("Updates completed");
+        this.leaveSessionWithError(new Error("Connection closed"));
       }
     );
   }
 
   public leaveSession() {
-    this.webSocket?.complete();
+    this.leaveSessionWithError(null);
+  }
+
+  private leaveSessionWithError(error: Error | null) {
+    this.webSocket?.close();
+    if (error !== null) {
+      this.errorSubject.next(error);
+    }
     this.sessionSubject.next(null);
   }
 
   public setPoints(points: number) {
-    this.webSocket?.next({ tag: "SetPoints", content: points });
+    this.webSocket?.send(JSON.stringify({ tag: "SetPoints", content: points }));
   }
 
   resetPoints() {
-    this.webSocket?.next({ tag: "ResetPoints", content: null });
+    this.webSocket?.send(JSON.stringify({ tag: "ResetPoints", content: null }));
   }
 
   claimSession() {
-    this.webSocket?.next({ tag: "ClaimSession", content: null });
+    this.webSocket?.send(JSON.stringify({ tag: "ClaimSession", content: null }));
   }
 }
