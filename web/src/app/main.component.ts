@@ -21,6 +21,12 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
         <mat-button-toggle color="primary" *ngFor="let card of cards" value="{{card}}">{{card}}</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
+    <div *ngIf="revealCards()">
+      <h2>Statistics</h2>
+      Mean Vote: {{meanVote()}}<br />
+      High Voters: {{highVoters().join(", ")}}<br />
+      Low Voters: {{lowVoters().join(", ")}}
+    </div>
     <div *ngIf="displayControl()">
       <h2>Control</h2>
       <button mat-raised-button color="primary" (click)="resetPoints()">Reset</button>
@@ -64,10 +70,66 @@ export class MainComponent {
     this.sessionService.claimSession();
   }
 
+  private forEachUser(f: (user: UserState) => void): void {
+    if (this.session === null) return;
+    Object.values(this.session.state.users).forEach((user) => f(user));
+  }
+
+  meanVote() {
+    var num = 0;
+    var sum = 0;
+    this.forEachUser((user) => {
+      let userVote = Number(user.points);
+      if (!isNaN(userVote)) {
+        num += 1;
+        sum += userVote;
+      }
+    });
+    if (num === 0) return 0;
+    else return (sum / num).toFixed();
+  }
+
+  highVoters(): string[] {
+    var names: string[] = [];
+    var vote = 0;
+    this.forEachUser((user) => {
+      if (user.name === null) return;
+      let userVote = Number(user.points);
+      if (!isNaN(userVote)) {
+        if (userVote > vote) {
+          names = [user.name];
+          vote = userVote;
+        } else if (userVote == vote) {
+          names.push(user.name);
+        }
+      }
+    });
+    return names;
+  }
+
+  lowVoters(): string[] {
+    if (this.session === null) return [];
+    var names: string[] = [];
+    var vote = 100000;
+    this.forEachUser((user) => {
+      if (user.name === null) return;
+      let userVote = Number(user.points);
+      if (!isNaN(userVote)) {
+        if (userVote < vote) {
+          names = [user.name];
+          vote = userVote;
+        } else if (userVote == vote) {
+          names.push(user.name);
+        }
+      }
+    });
+    return names;
+  }
+
   revealCards(): boolean {
     if (this.session === null) return false;
     var reveal = true;
-    Object.values(this.session.state.users).forEach((user) => {
+    this.forEachUser((user) => {
       if (user.points === null) {
         reveal = false;
       }
