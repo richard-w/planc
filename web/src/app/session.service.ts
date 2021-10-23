@@ -105,6 +105,9 @@ export class SessionService {
             state = message.content as SessionState;
             break;
           }
+          case "KeepAlive": {
+            break;
+          }
           default: {
             throw new Error("Unexpected message tag: " + message.tag);
           }
@@ -124,7 +127,7 @@ export class SessionService {
     // React to state changes and errors.
     messageSubject.subscribe(
       (message) => {
-        console.log("Got update: " + JSON.stringify(message));
+        console.log("Got message: " + JSON.stringify(message));
         switch (message.tag) {
           case "Error": {
             this.webSocket?.complete();
@@ -137,6 +140,9 @@ export class SessionService {
               session.state = message.content as SessionState;
               this.sessionSubject.next(session);
             }
+            break;
+          }
+          case "KeepAlive": {
             break;
           }
           default: {

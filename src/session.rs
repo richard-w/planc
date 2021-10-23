@@ -2,6 +2,7 @@ use super::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicI64;
+use std::time::Duration;
 use tokio::sync::watch;
 use tokio::sync::Mutex;
 
@@ -70,6 +71,15 @@ impl Session {
                     log::error!("Sending session state failed: {:?}", err);
                     break;
                 }
+            }
+        });
+
+        // Send a keep-alive message every 5 seconds. This may be necessary to keep the websocket
+        // connection alive when certain reverse proxies are used.
+        let mut sender = conn.sender();
+        tokio::spawn(async move {
+            while sender.send(&ServerMessage::KeepAlive).await.is_ok() {
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         });
 
@@ -195,4 +205,5 @@ pub enum ServerMessage {
     State(SessionState),
     Whoami(String),
     Error(String),
+    KeepAlive,
 }
