@@ -177,6 +177,9 @@ export class SessionService {
   }
 
   private leaveSessionWithError(error: Error | null) {
+    if (this.webSocket !== null) {
+      this.webSocket.onclose = null;
+    }
     this.webSocket?.close();
     if (error !== null) {
       this.errorSubject.next(error);
