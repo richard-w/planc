@@ -35,8 +35,7 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
 })
 export class MainComponent {
   session: Session | null = null;
-  cards: number[] = [0, 1, 2, 3, 5, 8, 13, 20, 40, 60, 100];
-  selectedCard: number = -1;
+  cards: string[] = ["0", "1", "2", "3", "5", "8", "13", "20", "40", "60", "100", "?", "☕"];
 
   constructor(
     private sessionService: SessionService,
