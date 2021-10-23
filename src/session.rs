@@ -72,7 +72,7 @@ impl Session {
                         }
                     }
                 } else {
-                    log::error!("Invalid session state. Cannot find this user.");
+                    break;
                 }
 
                 // Mask kicked users.
