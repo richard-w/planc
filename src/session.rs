@@ -125,7 +125,7 @@ impl Session {
         })
         .await?;
 
-        log::info!("Session::join: User {} leaving sesion \"{}\"", user_id, self.session_id);
+        log::info!("Session::join: User {} leaving session \"{}\"", user_id, self.session_id);
         Ok(())
     }
 
