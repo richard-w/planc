@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-import { MatButtonToggleChange } from '@angular/material/button-toggle';
 import { SessionService, Session, SessionState, UserState } from './session.service';
 
 @Component({
@@ -14,16 +13,20 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
           <mat-icon>person_remove</mat-icon>
         </button>
         {{user.value.name}}
-        <span *ngIf="revealCards()">: {{user.value.points}}</span>
-        <span *ngIf="!revealCards() && user.value.points != null">: x</span>
+        <span *ngIf="!user.value.isSpectator">
+          <span *ngIf="revealCards()">: {{user.value.points}}</span>
+          <span *ngIf="!revealCards() && user.value.points != null">: x</span>
+        </span>
+        <span *ngIf="user.value.isSpectator">: Spectator</span>
       </li>
     </ul>
-    <div *ngIf="displayCards()">
+    <div *ngIf="displayCards() && !spectator">
       <h2>Cards</h2>
-      <mat-button-toggle-group (change)="setPoints($event)">
+      <mat-button-toggle-group [ngModel]="points" (ngModelChange)="setPoints($event)">
         <mat-button-toggle color="primary" *ngFor="let card of cards" value="{{card}}">{{card}}</mat-button-toggle>
       </mat-button-toggle-group>
     </div>
+    <mat-checkbox [ngModel]="spectator" (ngModelChange)="setSpectator($event)">Spectator</mat-checkbox>
     <div *ngIf="revealCards()">
       <h2>Statistics</h2>
       Mean Vote: {{meanVote()}}<br />
@@ -38,13 +41,14 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
       <h2>Control</h2>
       <button mat-raised-button color="primary" (click)="claimSession()">Claim Session</button>
     </div>
-
   `,
   styles: []
 })
 export class MainComponent {
   session: Session | null = null;
   cards: string[] = ["0", "1", "2", "3", "5", "8", "13", "20", "40", "60", "100", "?", "☕"];
+  points: string | null = null;
+  spectator: boolean = false;
 
   constructor(
     private sessionService: SessionService,
@@ -61,8 +65,8 @@ export class MainComponent {
     });
   }
 
-  setPoints(event: MatButtonToggleChange) {
-    this.sessionService.setPoints(event.value);
+  setPoints(value: string) {
+    this.sessionService.setPoints(value);
   }
 
   resetPoints() {
@@ -77,9 +81,18 @@ export class MainComponent {
     this.sessionService.kickUser(userId);
   }
 
+  setSpectator(value: boolean) {
+    this.spectator = value;
+    this.sessionService.setSpectator(value);
+  }
+
   private forEachUser(f: (user: UserState) => void): void {
     if (this.session === null) return;
-    Object.values(this.session.state.users).forEach((user) => f(user));
+    Object.values(this.session.state.users).forEach((user) => {
+      if (!user.isSpectator) {
+        f(user)
+      }
+    });
   }
 
   meanVote() {

@@ -21,6 +21,7 @@ export interface UserStateMap {
 export class UserState {
   name: string | null = null;
   points: number | null = null;
+  isSpectator: boolean = false;
 }
 
 class Message {
@@ -187,7 +188,7 @@ export class SessionService {
     this.sessionSubject.next(null);
   }
 
-  public setPoints(points: number) {
+  public setPoints(points: string) {
     this.webSocket?.send(JSON.stringify({ tag: "SetPoints", content: points }));
   }
 
@@ -201,5 +202,9 @@ export class SessionService {
 
   kickUser(userId: string) {
     this.webSocket?.send(JSON.stringify({ tag: "KickUser", content: userId }));
+  }
+
+  setSpectator(isSpectator: boolean) {
+    this.webSocket?.send(JSON.stringify({ tag: "SetSpectator", content: isSpectator }));
   }
 }

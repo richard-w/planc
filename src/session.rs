@@ -85,7 +85,7 @@ impl Session {
                 new_state.users.retain(|_, user| !user.kicked);
 
                 // Mask points so they are not visible from the console.
-                if new_state.users.values().any(|user| user.points.is_none()) {
+                if new_state.users.values().any(|user| !user.is_spectator && user.points.is_none()) {
                     new_state.users.values_mut().for_each(|user| {
                         if user.points.is_some() {
                             user.points = Some("-1".to_string());
@@ -151,8 +151,13 @@ impl Session {
                 }
                 ClientMessage::SetPoints(points) if points.len() <= 8 => {
                     self.update_state(|mut state| {
-                        state.users.get_mut(user_id).unwrap().points = Some(points.clone());
-                        Result::Ok(state)
+                        let user_state = state.users.get_mut(user_id).unwrap();
+                        if !user_state.is_spectator {
+                            user_state.points = Some(points.clone());
+                            Ok(state)
+                        } else {
+                            Err(Error::InvalidMessage.into())
+                        }
                     })
                     .await
                 }
@@ -197,6 +202,15 @@ impl Session {
                         } else {
                             Err(Error::InsufficientPermissions.into())
                         }
+                    })
+                    .await
+                }
+                ClientMessage::SetSpectator(is_spectator) => {
+                    self.update_state(|mut state| {
+                        let mut user_state = state.users.get_mut(user_id).unwrap();
+                        user_state.is_spectator = is_spectator;
+                        user_state.points = None;
+                        Ok(state)
                     })
                     .await
                 }
@@ -246,9 +260,11 @@ pub struct SessionState {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserState {
     pub name: Option<String>,
     pub points: Option<String>,
+    pub is_spectator: bool,
     #[serde(skip)]
     pub kicked: bool,
 }
@@ -262,6 +278,7 @@ pub enum ClientMessage {
     Whoami,
     ClaimSession,
     KickUser(String),
+    SetSpectator(bool),
 }
 
 #[derive(Debug, Serialize)]
