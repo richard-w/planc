@@ -4,6 +4,7 @@ cd $(dirname $0)
 
 docker build \
         --tag planc-frontend-build \
+        --pull \
         --build-arg=uid=$(id -u) \
         --build-arg=gid=$(id -g) \
         .
