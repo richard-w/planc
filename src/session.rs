@@ -17,6 +17,7 @@ pub struct Session {
 
 impl Session {
     pub fn new(ctx: Arc<ServiceContext>, session_id: &str, max_users: usize) -> Self {
+        log::info!("Session::new: Creating session \"{}\"", session_id);
         let session_id = session_id.to_string();
         let (session_state_tx, session_state_rx) = watch::channel(SessionState::default());
         let session_state_tx = Mutex::new(session_state_tx);
@@ -49,9 +50,11 @@ impl Session {
         })
         .await;
         if let Err(err) = add_user_result {
+            log::warn!("Session::join: Joining \"{}\" denied: {}", self.session_id, err);
             conn.send(&ServerMessage::Error(format!("Error joining session: {}", err))).await?;
             return Ok(());
         }
+        log::info!("Session::join: Joined user {} to session \"{}\"", user_id, self.session_id);
 
         // Subscribe client to state updates.
         let mut sender = conn.sender();
@@ -63,15 +66,18 @@ impl Session {
                 // Clone state for some ad-hoc modifications and checks.
                 let mut new_state = session_state_rx.borrow().to_owned();
 
-                // Check if this user was kicked and stop sending state in that case.
-                if let Some(user) = new_state.users.get(&user_id) {
-                    if user.kicked {
-                        if let Err(err) = sender.send(&ServerMessage::Error("You have been kicked from the session".to_string())).await {
-                            log::error!("Sending kick message failed: {:?}", err);
-                            break;
-                        }
-                    }
+                // Get a reference to this user's state or terminate this task.
+                let user = if let Some(user) = new_state.users.get(&user_id) {
+                    user
                 } else {
+                    break;
+                };
+
+                // Check if this user was kicked and stop this task if that is the case.
+                if user.kicked {
+                    if let Err(err) = sender.send(&ServerMessage::Error("You have been kicked from the session".to_string())).await {
+                        log::warn!("Session::join/send_state_task/send_kick_message: {}", err);
+                    }
                     break;
                 }
 
@@ -86,8 +92,10 @@ impl Session {
                         }
                     });
                 }
+
+                // Send the modified state.
                 if let Err(err) = sender.send(&ServerMessage::State(new_state)).await {
-                    log::error!("Sending session state failed: {:?}", err);
+                    log::warn!("Session::join/send_state_task/send_state_message: {}", err);
                     break;
                 }
             }
@@ -104,7 +112,7 @@ impl Session {
 
         // Listen to messages from the connection.
         if let Err(err) = self.handle_connection(conn, &user_id).await {
-            log::error!("Error handling connection: {:?}", err);
+            log::warn!("Session::join/handle_connection: {}", err);
         }
 
         // Remove user from state.
@@ -117,6 +125,7 @@ impl Session {
         })
         .await?;
 
+        log::info!("Session::join: User {} leaving sesion \"{}\"", user_id, self.session_id);
         Ok(())
     }
 
@@ -167,6 +176,7 @@ impl Session {
                     self.update_state(|mut state| {
                         if state.admin.is_none() {
                             state.admin = Some(user_id.to_string());
+                            log::info!("Session::handle_connection: User {} claiming session \"{}\"", user_id, self.session_id);
                             Ok(state)
                         } else {
                             Err(Error::InsufficientPermissions.into())
@@ -179,6 +189,7 @@ impl Session {
                         if state.admin.as_deref() == Some(user_id) {
                             if let Some(kickee) = state.users.get_mut(&kickee_id) {
                                 kickee.kicked = true;
+                                log::info!("Session::handle_connection: Kicking user {} from session \"{}\"", kickee_id, self.session_id);
                                 Ok(state)
                             } else {
                                 Err(Error::UnknownUserId.into())
@@ -223,6 +234,7 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
+        log::info!("Session::drop: Removing session \"{}\"", self.session_id);
         self.ctx.cleanup_session(&self.session_id);
     }
 }

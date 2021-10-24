@@ -33,7 +33,6 @@ pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Res
                     None,
                 )
                 .await;
-                log::info!("Incoming websocket connection");
                 let mut connection = Connection::new(websocket);
                 match ctx.get_session(&session_id) {
                     Ok(session) => {
@@ -46,9 +45,8 @@ pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Res
             })
             .map(|result| {
                 result.unwrap_or_else(|err| {
-                    log::error!("Error on websocket connection: {:?}", err);
+                    log::warn!("route_request: {:?}", err);
                 });
-                log::info!("Websocket connection closed");
             }),
     );
     Ok(response)

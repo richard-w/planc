@@ -41,7 +41,7 @@ type Result<T> = std::result::Result<T, BoxedError>;
 async fn main() {
     // Initialize logging.
     env_logger::init();
-    log::info!("Initializing application");
+    log::info!("main: Initializing application");
 
     // Parse command line arguments
     #[rustfmt::skip]
@@ -79,7 +79,7 @@ async fn main() {
     let arg_bind_port = args.value_of("bind_port").unwrap();
     let arg_max_sessions = args.value_of("max_sessions").unwrap().parse().expect("Failed to parse max_sessions");
     let arg_max_users = args.value_of("max_users").unwrap().parse().expect("Failed to parse max_users");
-    log::info!("Binding to {}:{}", arg_bind_address, arg_bind_port);
+    log::info!("main: Binding to {}:{}", arg_bind_address, arg_bind_port);
 
     let bind_address: IpAddr = arg_bind_address
         .parse()
@@ -92,7 +92,7 @@ async fn main() {
         max_users: arg_max_users,
     }));
     let server = Server::bind(&socket_address).serve(MakeService::new(ctx));
-    log::info!("Server started");
+    log::info!("main: Server started");
 
     server.await.expect("Server task failure");
 }

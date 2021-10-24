@@ -29,7 +29,7 @@ impl Connection {
                     Ok(_) => {}
                     Err(WebSocketError::ConnectionClosed) => break,
                     Err(err) => {
-                        log::error!("Error while sending websocket message: {:?}", err);
+                        log::warn!("Connection/sink::send: {:?}", err);
                         break;
                     }
                 }
