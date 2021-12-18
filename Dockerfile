@@ -1,5 +1,5 @@
 # Frontend build image.
-FROM node:16
+FROM node:16 AS frontend_build
 # Install angular CLI.
 RUN npm install -g @angular/cli
 # Add user and group.
@@ -16,7 +16,7 @@ ADD --chown=node:node web /work
 RUN ng build
 
 # Backend build image.
-FROM rust
+FROM rust AS backend_build
 # Install musl toolchain.
 RUN rustup target add x86_64-unknown-linux-musl
 # Add unprivileged user.
@@ -25,7 +25,7 @@ RUN groupadd user && useradd -m -g user user
 ADD --chown=user:user Cargo.lock Cargo.toml /work/
 ADD --chown=user:user src /work/src/
 # Copy frontend build.
-COPY --from=0 --chown=user:user /work/dist /work/web/dist
+COPY --from=frontend_build --chown=user:user /work/dist /work/web/dist
 # Build backend
 USER user:user
 WORKDIR /work
@@ -34,7 +34,7 @@ RUN cargo build --target x86_64-unknown-linux-musl --release
 # Runtime image.
 FROM alpine
 # Copy application.
-COPY --from=1 /work/target/x86_64-unknown-linux-musl/release/planc /
+COPY --from=backend_build /work/target/x86_64-unknown-linux-musl/release/planc /
 # Run as unprivileged user.
 RUN adduser -D user
 USER user:user
