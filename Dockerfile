@@ -1,5 +1,5 @@
 # Frontend build image.
-FROM node
+FROM node:16
 # Install angular CLI.
 RUN npm install -g @angular/cli
 # Add user and group.
