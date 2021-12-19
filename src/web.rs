@@ -22,7 +22,7 @@ pub async fn route_request(req: Request) -> Result<Response> {
             hyper::Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", content_type)
-                .body(Body::from(file.contents))
+                .body(Body::from(file.contents()))
         })
         .or_else(|| {
             // Fallback path just returns index.html so we can handle most routing in the frontend.
@@ -31,7 +31,7 @@ pub async fn route_request(req: Request) -> Result<Response> {
                     hyper::Response::builder()
                     .status(StatusCode::OK)
                     .header("Content-Type", "text/html")
-                    .body(Body::from(file.contents))
+                    .body(Body::from(file.contents()))
                 })
         })
         .unwrap_or_else(|| {
