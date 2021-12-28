@@ -1,0 +1,7 @@
+status = [
+	"build_frontend",
+	"build",
+	"build_docker",
+	"clippy",
+	"format",
+]
