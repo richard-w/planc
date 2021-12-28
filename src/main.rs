@@ -1,16 +1,3 @@
-extern crate clap;
-extern crate env_logger;
-extern crate futures;
-extern crate http;
-extern crate hyper;
-extern crate include_dir;
-extern crate log;
-extern crate rand;
-extern crate serde;
-extern crate serde_json;
-extern crate tokio;
-extern crate tokio_tungstenite;
-
 mod api;
 mod connection;
 mod context;
