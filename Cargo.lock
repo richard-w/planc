@@ -514,7 +514,6 @@ dependencies = [
  "hyper",
  "include_dir",
  "log",
- "rand",
  "serde",
  "serde_json",
  "tokio",
