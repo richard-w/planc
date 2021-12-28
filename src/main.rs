@@ -77,8 +77,16 @@ async fn main() {
 
     let arg_bind_address = args.value_of("bind_address").unwrap();
     let arg_bind_port = args.value_of("bind_port").unwrap();
-    let arg_max_sessions = args.value_of("max_sessions").unwrap().parse().expect("Failed to parse max_sessions");
-    let arg_max_users = args.value_of("max_users").unwrap().parse().expect("Failed to parse max_users");
+    let arg_max_sessions = args
+        .value_of("max_sessions")
+        .unwrap()
+        .parse()
+        .expect("Failed to parse max_sessions");
+    let arg_max_users = args
+        .value_of("max_users")
+        .unwrap()
+        .parse()
+        .expect("Failed to parse max_users");
     log::info!("main: Binding to {}:{}", arg_bind_address, arg_bind_port);
 
     let bind_address: IpAddr = arg_bind_address

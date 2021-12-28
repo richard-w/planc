@@ -41,7 +41,11 @@ impl ServiceContext {
         }
 
         // Create new session.
-        let session = Arc::new(Session::new(self.clone(), session_id, self.config.max_users));
+        let session = Arc::new(Session::new(
+            self.clone(),
+            session_id,
+            self.config.max_users,
+        ));
         sessions.insert(session_id.to_string(), Arc::downgrade(&session));
         Ok(session)
     }

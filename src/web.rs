@@ -9,7 +9,8 @@ pub async fn route_request(req: Request) -> Result<Response> {
     assert!(uri.path().starts_with('/'));
     let path = &uri.path()[1..];
 
-    let response = WEB_DIR.get_file(path)
+    let response = WEB_DIR
+        .get_file(path)
         .map(|file| {
             // Explicit request for an existing file.
             let content_type = match path.rsplit('.').next().unwrap() {
@@ -26,13 +27,12 @@ pub async fn route_request(req: Request) -> Result<Response> {
         })
         .or_else(|| {
             // Fallback path just returns index.html so we can handle most routing in the frontend.
-            WEB_DIR.get_file("index.html")
-                .map(|file| {
-                    hyper::Response::builder()
+            WEB_DIR.get_file("index.html").map(|file| {
+                hyper::Response::builder()
                     .status(StatusCode::OK)
                     .header("Content-Type", "text/html")
                     .body(Body::from(file.contents()))
-                })
+            })
         })
         .unwrap_or_else(|| {
             // Fallback for when index.html does not exist, which may happen in some development

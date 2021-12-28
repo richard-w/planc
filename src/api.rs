@@ -35,11 +35,14 @@ pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Res
                 .await;
                 let mut connection = Connection::new(websocket);
                 match ctx.get_session(&session_id) {
-                    Ok(session) => {
-                        session.join(connection).await
-                    }
+                    Ok(session) => session.join(connection).await,
                     Err(err) => {
-                        connection.send(&ServerMessage::Error(format!("Error joining session: {}", err))).await
+                        connection
+                            .send(&ServerMessage::Error(format!(
+                                "Error joining session: {}",
+                                err
+                            )))
+                            .await
                     }
                 }
             })

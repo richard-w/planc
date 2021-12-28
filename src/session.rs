@@ -40,21 +40,34 @@ impl Session {
             .to_string();
 
         // Add user to session state.
-        let add_user_result = self.update_state(|mut state| {
-            if state.users.len() >= self.max_users {
-                Err(Error::MaxUsersExceeded.into())
-            } else {
-                state.users.insert(user_id.clone(), UserState::default());
-                Result::Ok(state)
-            }
-        })
-        .await;
+        let add_user_result = self
+            .update_state(|mut state| {
+                if state.users.len() >= self.max_users {
+                    Err(Error::MaxUsersExceeded.into())
+                } else {
+                    state.users.insert(user_id.clone(), UserState::default());
+                    Result::Ok(state)
+                }
+            })
+            .await;
         if let Err(err) = add_user_result {
-            log::warn!("Session::join: Joining \"{}\" denied: {}", self.session_id, err);
-            conn.send(&ServerMessage::Error(format!("Error joining session: {}", err))).await?;
+            log::warn!(
+                "Session::join: Joining \"{}\" denied: {}",
+                self.session_id,
+                err
+            );
+            conn.send(&ServerMessage::Error(format!(
+                "Error joining session: {}",
+                err
+            )))
+            .await?;
             return Ok(());
         }
-        log::info!("Session::join: Joined user {} to session \"{}\"", user_id, self.session_id);
+        log::info!(
+            "Session::join: Joined user {} to session \"{}\"",
+            user_id,
+            self.session_id
+        );
 
         // Subscribe client to state updates.
         let mut sender = conn.sender();
@@ -75,7 +88,12 @@ impl Session {
 
                 // Check if this user was kicked and stop this task if that is the case.
                 if user.kicked {
-                    if let Err(err) = sender.send(&ServerMessage::Error("You have been kicked from the session".to_string())).await {
+                    if let Err(err) = sender
+                        .send(&ServerMessage::Error(
+                            "You have been kicked from the session".to_string(),
+                        ))
+                        .await
+                    {
                         log::warn!("Session::join/send_state_task/send_kick_message: {}", err);
                     }
                     break;
@@ -85,7 +103,11 @@ impl Session {
                 new_state.users.retain(|_, user| !user.kicked);
 
                 // Mask points so they are not visible from the console.
-                if new_state.users.values().any(|user| !user.is_spectator && user.points.is_none()) {
+                if new_state
+                    .users
+                    .values()
+                    .any(|user| !user.is_spectator && user.points.is_none())
+                {
                     new_state.users.values_mut().for_each(|user| {
                         if user.points.is_some() {
                             user.points = Some("-1".to_string());
@@ -125,7 +147,11 @@ impl Session {
         })
         .await?;
 
-        log::info!("Session::join: User {} leaving session \"{}\"", user_id, self.session_id);
+        log::info!(
+            "Session::join: User {} leaving session \"{}\"",
+            user_id,
+            self.session_id
+        );
         Ok(())
     }
 
