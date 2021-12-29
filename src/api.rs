@@ -1,6 +1,5 @@
 use super::*;
-use futures::future::FutureExt;
-use hyper::StatusCode;
+use hyper::{Body, StatusCode};
 use tokio_tungstenite::tungstenite;
 use tokio_tungstenite::WebSocketStream;
 

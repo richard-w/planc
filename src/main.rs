@@ -11,17 +11,13 @@ pub use self::error::*;
 pub use self::session::*;
 
 use anyhow::{Error, Result};
-use hyper::body::Body;
-use hyper::server::conn::AddrStream;
-use hyper::server::Server;
-use std::future::Future;
-use std::net::{IpAddr, SocketAddr};
+use futures::prelude::*;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-type Request = hyper::Request<Body>;
-type Response = hyper::Response<Body>;
+type Request = hyper::Request<hyper::Body>;
+type Response = hyper::Response<hyper::Body>;
 
 #[tokio::main]
 async fn main() {
@@ -75,17 +71,17 @@ async fn main() {
         .expect("Failed to parse max_users");
     log::info!("main: Binding to {}:{}", arg_bind_address, arg_bind_port);
 
-    let bind_address: IpAddr = arg_bind_address
+    let bind_address: std::net::IpAddr = arg_bind_address
         .parse()
         .expect("Failed to parse bind address");
     let bind_port: u16 = arg_bind_port.parse().expect("Failed to parse bind port");
-    let socket_address = SocketAddr::new(bind_address, bind_port);
+    let socket_address = std::net::SocketAddr::new(bind_address, bind_port);
 
     let ctx = Arc::new(ServiceContext::new(ServiceContextConfig {
         max_sessions: arg_max_sessions,
         max_users: arg_max_users,
     }));
-    let server = Server::bind(&socket_address).serve(MakeService::new(ctx));
+    let server = hyper::server::Server::bind(&socket_address).serve(MakeService::new(ctx));
     log::info!("main: Server started");
 
     server.await.expect("Server task failure");
@@ -101,7 +97,7 @@ impl MakeService {
     }
 }
 
-impl hyper::service::Service<&AddrStream> for MakeService {
+impl hyper::service::Service<&hyper::server::conn::AddrStream> for MakeService {
     type Response = Service;
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send + Sync>>;
@@ -110,7 +106,7 @@ impl hyper::service::Service<&AddrStream> for MakeService {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, _conn: &AddrStream) -> Self::Future {
+    fn call(&mut self, _conn: &hyper::server::conn::AddrStream) -> Self::Future {
         let ctx = self.ctx.clone();
         Box::pin(async move { Ok(Service::new(ctx)) })
     }
