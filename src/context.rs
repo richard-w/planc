@@ -37,7 +37,7 @@ impl ServiceContext {
 
         // Check if maximum sessions would be exceeded.
         if sessions.len() >= self.config.max_sessions {
-            return Err(Error::MaxSessionsExceeded.into());
+            return Err(PlancError::MaxSessionsExceeded.into());
         }
 
         // Create new session.

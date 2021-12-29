@@ -1,8 +1,6 @@
 use super::*;
 use futures::channel::mpsc;
-use futures::future;
-use futures::sink::SinkExt;
-use futures::stream::{BoxStream, StreamExt, TryStreamExt};
+use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite::Error as WebSocketError;
