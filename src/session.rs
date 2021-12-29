@@ -43,7 +43,7 @@ impl Session {
         let add_user_result = self
             .update_state(|mut state| {
                 if state.users.len() >= self.max_users {
-                    Err(Error::MaxUsersExceeded.into())
+                    Err(PlancError::MaxUsersExceeded.into())
                 } else {
                     state.users.insert(user_id.clone(), UserState::default());
                     Result::Ok(state)
@@ -160,7 +160,7 @@ impl Session {
             // Terminate the connection for kicked users.
             let user_state = self.user_state(user_id).await?;
             if user_state.kicked {
-                return Err(Error::UserKicked.into());
+                return Err(PlancError::UserKicked.into());
             }
 
             let result = match msg? {
@@ -170,7 +170,7 @@ impl Session {
                             state.users.get_mut(user_id).unwrap().name = Some(name.clone());
                             Ok(state)
                         } else {
-                            Err(Error::DuplicateName.into())
+                            Err(PlancError::DuplicateName.into())
                         }
                     })
                     .await
@@ -182,7 +182,7 @@ impl Session {
                             user_state.points = Some(points.clone());
                             Ok(state)
                         } else {
-                            Err(Error::InvalidMessage.into())
+                            Err(PlancError::InvalidMessage.into())
                         }
                     })
                     .await
@@ -195,7 +195,7 @@ impl Session {
                             }
                             Ok(state)
                         } else {
-                            Err(Error::InsufficientPermissions.into())
+                            Err(PlancError::InsufficientPermissions.into())
                         }
                     })
                     .await
@@ -210,7 +210,7 @@ impl Session {
                             log::info!("Session::handle_connection: User {} claiming session \"{}\"", user_id, self.session_id);
                             Ok(state)
                         } else {
-                            Err(Error::InsufficientPermissions.into())
+                            Err(PlancError::InsufficientPermissions.into())
                         }
                     })
                     .await
@@ -223,10 +223,10 @@ impl Session {
                                 log::info!("Session::handle_connection: Kicking user {} from session \"{}\"", kickee_id, self.session_id);
                                 Ok(state)
                             } else {
-                                Err(Error::UnknownUserId.into())
+                                Err(PlancError::UnknownUserId.into())
                             }
                         } else {
-                            Err(Error::InsufficientPermissions.into())
+                            Err(PlancError::InsufficientPermissions.into())
                         }
                     })
                     .await
@@ -240,7 +240,7 @@ impl Session {
                     })
                     .await
                 }
-                _ => Err(Error::InvalidMessage.into()),
+                _ => Err(PlancError::InvalidMessage.into()),
             };
             if let Err(err) = result {
                 conn.send(&ServerMessage::Error(err.to_string())).await?;
@@ -250,9 +250,9 @@ impl Session {
         Ok(())
     }
 
-    async fn update_state<F, E>(&self, mut func: F) -> std::result::Result<(), E>
+    async fn update_state<F>(&self, mut func: F) -> Result<()>
     where
-        F: FnMut(SessionState) -> std::result::Result<SessionState, E>,
+        F: FnMut(SessionState) -> Result<SessionState>,
     {
         let session_state_tx = self.session_state_tx.lock().await;
         let current_state = session_state_tx.borrow().clone();
@@ -267,7 +267,7 @@ impl Session {
         if let Some(user_state) = current_state.users.get(user_id) {
             Ok(user_state.clone())
         } else {
-            Err(Error::UnknownUserId.into())
+            Err(PlancError::UnknownUserId.into())
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
-pub enum Error {
+pub enum PlancError {
     InvalidMessage,
     InsufficientPermissions,
     DuplicateName,
@@ -11,10 +11,10 @@ pub enum Error {
     UserKicked,
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for PlancError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for PlancError {}

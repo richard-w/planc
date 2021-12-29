@@ -10,6 +10,7 @@ pub use self::context::*;
 pub use self::error::*;
 pub use self::session::*;
 
+use anyhow::{Error, Result};
 use hyper::body::Body;
 use hyper::server::conn::AddrStream;
 use hyper::server::Server;
@@ -19,10 +20,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-type BoxedError = Box<dyn std::error::Error + Send + Sync>;
 type Request = hyper::Request<Body>;
 type Response = hyper::Response<Body>;
-type Result<T> = std::result::Result<T, BoxedError>;
 
 #[tokio::main]
 async fn main() {
@@ -104,7 +103,7 @@ impl MakeService {
 
 impl hyper::service::Service<&AddrStream> for MakeService {
     type Response = Service;
-    type Error = BoxedError;
+    type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send + Sync>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
@@ -129,7 +128,7 @@ impl Service {
 
 impl hyper::service::Service<Request> for Service {
     type Response = Response;
-    type Error = BoxedError;
+    type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
