@@ -72,8 +72,11 @@ export class LoginComponent implements OnInit {
 
   saveLoginDialogResult(result: LoginDialogResult) {
     if (result.remember) {
-      this.cookieService.put("lastUserName", result.name);
-      this.cookieService.put("lastSessionId", result.sessionId);
+      let now = new Date();
+      // Let cookie expire in 1 year from now
+      let expires = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      this.cookieService.put("lastUserName", result.name, {expires: expires});
+      this.cookieService.put("lastSessionId", result.sessionId, {expires: expires});
     }
     else {
       this.cookieService.remove("lastUserName");
