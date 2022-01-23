@@ -63,8 +63,8 @@ export class LoginComponent implements OnInit {
   }
 
   loadLastLoginDialogResult(): LoginDialogResult {
-    const lastUserName = this.cookieService.get("lastUserName");
-    const lastSessionId = this.cookieService.get("lastSessionId");
+    const lastUserName = this.cookieService.get('lastUserName');
+    const lastSessionId = this.cookieService.get('lastSessionId');
     if (lastUserName && lastSessionId) {
       return {
         name: lastUserName,
@@ -82,12 +82,12 @@ export class LoginComponent implements OnInit {
       const now = new Date();
       // Let cookie expire in 1 year from now
       const expires = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
-      this.cookieService.put("lastUserName", result.name, {expires: expires});
-      this.cookieService.put("lastSessionId", result.sessionId, {expires: expires});
+      this.cookieService.put('lastUserName', result.name, {expires: expires});
+      this.cookieService.put('lastSessionId', result.sessionId, {expires: expires});
     }
     else {
-      this.cookieService.remove("lastUserName");
-      this.cookieService.remove("lastSessionId");
+      this.cookieService.remove('lastUserName');
+      this.cookieService.remove('lastSessionId');
     }
   }
 
