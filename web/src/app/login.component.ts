@@ -62,19 +62,21 @@ export class LoginComponent implements OnInit {
     this.openLoginDialog();
   }
 
-  loadLastLoginDialogResult() {
-    let lastResult = new LoginDialogResult();
-    lastResult.name = this.cookieService.get("lastUserName");
-    lastResult.sessionId = this.cookieService.get("lastSessionId");
-    lastResult.remember = Boolean(lastResult.name && lastResult.sessionId);
-    return lastResult;
+  loadLastLoginDialogResult(): LoginDialogResult {
+    const lastUserName = this.cookieService.get("lastUserName");
+    const lastSessionId = this.cookieService.get("lastSessionId");
+    return {
+      name: lastUserName,
+      sessionId: lastSessionId,
+      remember: Boolean(lastUserName && lastSessionId),
+    };
   }
 
   saveLoginDialogResult(result: LoginDialogResult) {
     if (result.remember) {
-      let now = new Date();
+      const now = new Date();
       // Let cookie expire in 1 year from now
-      let expires = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      const expires = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
       this.cookieService.put("lastUserName", result.name, {expires: expires});
       this.cookieService.put("lastSessionId", result.sessionId, {expires: expires});
     }
@@ -85,7 +87,7 @@ export class LoginComponent implements OnInit {
   }
 
   openLoginDialog() {
-    let lastResult = this.loadLastLoginDialogResult();
+    const lastResult = this.loadLastLoginDialogResult();
     const dialogRef = this.dialog.open(LoginDialogComponent, {
       closeOnNavigation: false,
       data: lastResult,
