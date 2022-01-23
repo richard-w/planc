@@ -65,11 +65,16 @@ export class LoginComponent implements OnInit {
   loadLastLoginDialogResult(): LoginDialogResult {
     const lastUserName = this.cookieService.get("lastUserName");
     const lastSessionId = this.cookieService.get("lastSessionId");
-    return {
-      name: lastUserName,
-      sessionId: lastSessionId,
-      remember: Boolean(lastUserName && lastSessionId),
-    };
+    if (lastUserName && lastSessionId) {
+      return {
+        name: lastUserName,
+        sessionId: lastSessionId,
+        remember: true,
+      };
+    }
+    else {
+      return new LoginDialogResult();
+    }
   }
 
   saveLoginDialogResult(result: LoginDialogResult) {
