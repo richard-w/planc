@@ -15,6 +15,7 @@ import { SessionService } from './session.service';
     <router-outlet></router-outlet>
   `,
   styles: [
+    ':host { display: block; }',
     '.app-toolbar { position: sticky; top: 0; z-index: 1; }',
     '.app-toolbar-spacer { flex: 1 1 auto; }',
   ]
