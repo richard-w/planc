@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { SessionService, Session, SessionState, UserState } from './session.service';
 
 @Component({
-  selector: '.app-main',
+  selector: 'app-main',
   template: `
     <h1>Session {{session?.sessionId}}</h1>
     <h2>Users</h2>
@@ -46,7 +46,7 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     // The toolbar uses 16px horizontal padding.  That's why we use it here
     // aswell.  For the vertial padding we simply take the half of the
     // horizontal padding.
-    ':host { padding: 8px 16px; }',
+    ':host { padding: 8px 16px; display: block; }',
   ],
 })
 export class MainComponent {
