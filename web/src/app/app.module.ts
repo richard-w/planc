@@ -2,6 +2,7 @@ import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { CookieModule } from 'ngx-cookie';
 import { FormsModule } from '@angular/forms';
 import { LoginComponent, LoginDialogComponent } from './login.component';
 import { MainComponent } from './main.component';
@@ -25,6 +26,7 @@ import { NgModule } from '@angular/core';
     AppRoutingModule,
     BrowserModule,
     BrowserAnimationsModule,
+    CookieModule.forRoot(),
     MatButtonModule,
     MatButtonToggleModule,
     MatCheckboxModule,

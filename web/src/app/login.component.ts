@@ -1,11 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
+import { CookieService } from 'ngx-cookie';
 import { Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { SessionService } from './session.service';
 
 class LoginDialogResult {
   name: string = '';
   sessionId: string = '';
+  remember: boolean = false;
 };
 
 @Component({
@@ -21,6 +23,8 @@ class LoginDialogResult {
         <mat-label>Session ID</mat-label>
         <input type="text" name="name" matInput [(ngModel)]="result.sessionId" />
       </mat-form-field>
+      <br />
+      <mat-checkbox [(ngModel)]="result.remember">Remember me</mat-checkbox>
     </div>
     <div mat-dialog-actions>
       <button mat-raised-button color="primary" [mat-dialog-close]="result" [disabled]="!isFormComplete()">Go</button>
@@ -31,7 +35,8 @@ class LoginDialogResult {
   ]
 })
 export class LoginDialogComponent {
-  result: LoginDialogResult = new LoginDialogResult();
+  constructor(@Inject(MAT_DIALOG_DATA) public result: LoginDialogResult) {
+  }
 
   isFormComplete() {
     if (this.result.name == '') return false;
@@ -47,6 +52,7 @@ export class LoginDialogComponent {
 })
 export class LoginComponent implements OnInit {
   constructor(
+    private cookieService: CookieService,
     private dialog: MatDialog,
     private router: Router,
     private sessionService: SessionService,
@@ -56,12 +62,44 @@ export class LoginComponent implements OnInit {
     this.openLoginDialog();
   }
 
+  loadLastLoginDialogResult(): LoginDialogResult {
+    const lastUserName = this.cookieService.get('lastUserName');
+    const lastSessionId = this.cookieService.get('lastSessionId');
+    if (lastUserName && lastSessionId) {
+      return {
+        name: lastUserName,
+        sessionId: lastSessionId,
+        remember: true,
+      };
+    }
+    else {
+      return new LoginDialogResult();
+    }
+  }
+
+  saveLoginDialogResult(result: LoginDialogResult) {
+    if (result.remember) {
+      const now = new Date();
+      // Let cookie expire in 1 year from now
+      const expires = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      this.cookieService.put('lastUserName', result.name, {expires: expires});
+      this.cookieService.put('lastSessionId', result.sessionId, {expires: expires});
+    }
+    else {
+      this.cookieService.remove('lastUserName');
+      this.cookieService.remove('lastSessionId');
+    }
+  }
+
   openLoginDialog() {
+    const lastResult = this.loadLastLoginDialogResult();
     const dialogRef = this.dialog.open(LoginDialogComponent, {
       closeOnNavigation: false,
+      data: lastResult,
       disableClose: true,
     });
     dialogRef.afterClosed().subscribe(result => {
+      this.saveLoginDialogResult(result);
       this.sessionService
         .joinSession(result.sessionId, result.name)
         .then(() => this.router.navigate(['/']))
