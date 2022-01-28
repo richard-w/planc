@@ -42,7 +42,12 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
       <button mat-raised-button color="primary" (click)="claimSession()">Claim Session</button>
     </div>
   `,
-  styles: []
+  styles: [
+    // The toolbar uses 16px horizontal padding.  That's why we use it here
+    // aswell.  For the vertial padding we simply take the half of the
+    // horizontal padding.
+    ':host { padding: 8px 16px; display: block; }',
+  ],
 })
 export class MainComponent {
   session: Session | null = null;
