@@ -2,7 +2,7 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { CookieService } from 'ngx-cookie';
 import { Router } from '@angular/router';
 import { MatDialog, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { SessionService } from './session.service';
+import { SessionService, SessionAlreadyOpenError } from './session.service';
 
 class LoginDialogResult {
   name: string = '';
@@ -105,6 +105,10 @@ export class LoginComponent implements OnInit {
         .then(() => this.router.navigate(['/']))
         .catch(err => {
           alert(err);
+          if (err instanceof SessionAlreadyOpenError) {
+            this.router.navigate(['/']);
+            return;
+          }
           this.openLoginDialog();
         });
     });

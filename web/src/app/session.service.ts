@@ -24,6 +24,9 @@ export class UserState {
   isSpectator: boolean = false;
 }
 
+export class SessionAlreadyOpenError extends Error {
+}
+
 class Message {
   tag: string = '';
   content: any = null;
@@ -67,7 +70,7 @@ export class SessionService {
 
   public async joinSession(sessionId: string, name: string): Promise<void> {
     if (this.session() != null) {
-      throw new Error("Already joined to a session");
+      throw new SessionAlreadyOpenError("Already joined to a session");
     }
 
     // Open websocket. Not using rxjs WebSocketSubject here since it displays
