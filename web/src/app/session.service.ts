@@ -165,13 +165,15 @@ export class SessionService {
           }
         }
       },
-      (err: Error) => {
-        console.log("Got update error: " + JSON.stringify(err));
-        this.leaveSessionWithError(err);
+      (errorEvent: Event) => {
+        const message = "Connection closed due to an error";
+        console.log(message);
+        this.leaveSessionWithError(new Error(message));
       },
       () => {
-        console.log("Updates completed");
-        this.leaveSessionWithError(new Error("Connection closed"));
+        const message = "Connection closed by server";
+        console.log(message);
+        this.leaveSessionWithError(new Error(message));
       }
     );
   }
