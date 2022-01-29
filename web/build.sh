@@ -27,4 +27,4 @@ docker build \
         .
 
 run_in_docker npm install
-run_in_docker ng build
+run_in_docker npm run build
