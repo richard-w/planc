@@ -104,7 +104,12 @@ export class LoginComponent implements OnInit {
         .joinSession(result.sessionId, result.name)
         .then(() => this.router.navigate(['/']))
         .catch(err => {
-          alert(err);
+          if (err instanceof Error) {
+            alert("Failed to join session: " + err.message);;
+          }
+          else {
+            alert("Failed to join session");
+          }
           if (err instanceof SessionAlreadyOpenError) {
             this.router.navigate(['/']);
             return;

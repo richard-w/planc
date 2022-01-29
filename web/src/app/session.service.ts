@@ -82,10 +82,10 @@ export class SessionService {
         resolve();
       };
       this.webSocket!.onerror = (event) => {
-        reject();
+        reject(new Error("connection error"));
       };
       this.webSocket!.onclose = (event) => {
-        reject();
+        reject(new Error("connection closed"));
       };
     });
 
