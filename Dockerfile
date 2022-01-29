@@ -1,7 +1,5 @@
 # Frontend build image.
 FROM node:16 AS frontend_build
-# Install angular CLI.
-RUN npm install -g @angular/cli
 # Add user and group.
 USER node:node
 # Copy package info.
@@ -13,7 +11,7 @@ RUN npm install
 # Copy sources.
 ADD --chown=node:node web /work
 # Build frontend.
-RUN ng build
+RUN npm run build
 
 # Backend build image.
 FROM rust AS backend_build
