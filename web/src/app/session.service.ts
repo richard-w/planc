@@ -95,6 +95,20 @@ export class SessionService {
     this.webSocket.onerror = (err) => messageSubject.error(err);
     this.webSocket.onclose = (event) => messageSubject.complete();
 
+    // React to connection errors and closed connections.
+    messageSubject.subscribe({
+      error: (errorEvent: Event) => {
+        const message = "Connection closed due to an error";
+        console.log(message);
+        this.leaveSessionWithError(new Error(message));
+      },
+      complete: () => {
+        const message = "Connection closed by server";
+        console.log(message);
+        this.leaveSessionWithError(new Error(message));
+      },
+    });
+
     // Request the user id.
     this.webSocket.send(JSON.stringify({tag: "Whoami", content: null }));
     // Change the username. Also triggers a session broadcast.
@@ -140,42 +154,30 @@ export class SessionService {
     });
 
     // React to state changes and errors.
-    messageSubject.subscribe(
-      (message) => {
-        console.log("Got message: " + JSON.stringify(message));
-        switch (message.tag) {
-          case "Error": {
-            this.leaveSessionWithError(new Error(message.content));
-            break;
-          }
-          case "State": {
-            let session = this.session();
-            if (session !== null) {
-              session.state = message.content as SessionState;
-              this.sessionSubject.next(session);
-            }
-            break;
-          }
-          case "KeepAlive": {
-            break;
-          }
-          default: {
-            console.log("Unexpected message tag: " + JSON.stringify(message));
-            break;
-          }
+    messageSubject.subscribe((message) => {
+      console.log("Got message: " + JSON.stringify(message));
+      switch (message.tag) {
+        case "Error": {
+          this.leaveSessionWithError(new Error(message.content));
+          break;
         }
-      },
-      (errorEvent: Event) => {
-        const message = "Connection closed due to an error";
-        console.log(message);
-        this.leaveSessionWithError(new Error(message));
-      },
-      () => {
-        const message = "Connection closed by server";
-        console.log(message);
-        this.leaveSessionWithError(new Error(message));
+        case "State": {
+          let session = this.session();
+          if (session !== null) {
+            session.state = message.content as SessionState;
+            this.sessionSubject.next(session);
+          }
+          break;
+        }
+        case "KeepAlive": {
+          break;
+        }
+        default: {
+          console.log("Unexpected message tag: " + JSON.stringify(message));
+          break;
+        }
       }
-    );
+    });
   }
 
   public leaveSession() {
