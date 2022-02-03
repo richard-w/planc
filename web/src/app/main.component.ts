@@ -22,9 +22,9 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     </ul>
     <div *ngIf="displayCards() && !spectator">
       <h2>Cards</h2>
-      <mat-button-toggle-group [ngModel]="points" (ngModelChange)="setPoints($event)">
-        <mat-button-toggle color="primary" *ngFor="let card of cards" value="{{card}}">{{card}}</mat-button-toggle>
-      </mat-button-toggle-group>
+      <div class="cards">
+        <button mat-raised-button *ngFor="let card of cards" [color]="card === points ? 'primary' : 'basic'" (click)="setPoints(card)">{{card}}</button>
+      </div>
     </div>
     <mat-checkbox [ngModel]="spectator" (ngModelChange)="setSpectator($event)">Spectator</mat-checkbox>
     <div *ngIf="revealCards()">
@@ -47,6 +47,7 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     // aswell.  For the vertial padding we simply take the half of the
     // horizontal padding.
     ':host { padding: 8px 16px; display: block; }',
+    '.cards button { margin-right: 1em; margin-bottom: 1em; min-width: 5em; min-height: 3.5em; }',
   ],
 })
 export class MainComponent {
@@ -64,6 +65,9 @@ export class MainComponent {
       if (this.session === null) {
         this.router.navigate(['/login']);
       }
+      else {
+        this.points = this.session.state.users[this.session.uid].points?.toString() ?? null;
+      }
     });
     sessionService.error$.subscribe((err: Error) => {
       alert(err);
@@ -71,6 +75,7 @@ export class MainComponent {
   }
 
   setPoints(value: string) {
+    this.points = value;
     this.sessionService.setPoints(value);
   }
 

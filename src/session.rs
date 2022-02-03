@@ -108,11 +108,14 @@ impl Session {
                     .values()
                     .any(|user| !user.is_spectator && user.points.is_none())
                 {
-                    new_state.users.values_mut().for_each(|user| {
-                        if user.points.is_some() {
-                            user.points = Some("-1".to_string());
-                        }
-                    });
+                    new_state
+                        .users
+                        .iter_mut()
+                        .for_each(|(other_user_id, other_user)| {
+                            if *other_user_id != user_id && other_user.points.is_some() {
+                                other_user.points = Some("-1".to_string());
+                            }
+                        });
                 }
 
                 // Send the modified state.
