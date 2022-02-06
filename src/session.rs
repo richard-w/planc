@@ -111,8 +111,9 @@ impl Session {
                     new_state
                         .users
                         .iter_mut()
-                        .for_each(|(other_user_id, other_user)| {
-                            if *other_user_id != user_id && other_user.points.is_some() {
+                        .filter(|&(item_user_id, _)| *item_user_id != user_id)
+                        .for_each(|(_, other_user)| {
+                            if other_user.points.is_some() {
                                 other_user.points = Some("-1".to_string());
                             }
                         });
