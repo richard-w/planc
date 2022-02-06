@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { SessionService, Session, SessionState, UserState } from './session.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-main',
@@ -52,27 +53,38 @@ import { SessionService, Session, SessionState, UserState } from './session.serv
     '.cards button { margin-right: 1em; margin-bottom: 1em; min-width: 5em; min-height: 3.5em; }',
   ],
 })
-export class MainComponent {
+export class MainComponent implements OnDestroy {
   session: Session | null = null;
   cards: string[] = ["0", "1", "2", "3", "5", "8", "13", "20", "40", "60", "100", "?", "☕"];
   points: string | null = null;
   spectator: boolean = false;
+  subscriptions: Subscription[] = [];
 
   constructor(
     private sessionService: SessionService,
     private router: Router,
   ) {
-    sessionService.session$.subscribe((session: Session | null) => {
-      this.session = session;
-      if (this.session === null) {
-        this.router.navigate(['/login']);
+    this.subscriptions.push(sessionService.session$.subscribe(
+      (session: Session | null) => {
+        this.session = session;
+        if (this.session === null) {
+          this.router.navigate(['/login']);
+        }
+        else {
+          this.points = this.session.state.users[this.session.uid].points?.toString() ?? null;
+        }
       }
-      else {
-        this.points = this.session.state.users[this.session.uid].points?.toString() ?? null;
+    ));
+    this.subscriptions.push(sessionService.error$.subscribe(
+      (err: Error) => {
+        alert(err);
       }
-    });
-    sessionService.error$.subscribe((err: Error) => {
-      alert(err);
+    ));
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.forEach((subscription) => {
+      subscription.unsubscribe();
     });
   }
 
