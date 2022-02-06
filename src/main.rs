@@ -11,6 +11,7 @@ pub use self::error::*;
 pub use self::session::*;
 
 use anyhow::{Error, Result};
+use clap::Parser;
 use futures::prelude::*;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -19,6 +20,24 @@ use std::task::{Context, Poll};
 type Request = hyper::Request<hyper::Body>;
 type Response = hyper::Response<hyper::Body>;
 
+/// Command line arguments
+#[derive(Parser, Debug)]
+#[clap(version, author, about)]
+struct Args {
+    /// HTTP listener address
+    #[clap(long, short = 'a')]
+    bind_address: String,
+    /// HTTP listener port
+    #[clap(long, short = 'p')]
+    bind_port: u16,
+    /// Maximum number of concurrent sessions
+    #[clap(long, default_value_t = 8)]
+    max_sessions: usize,
+    /// Maximum number of users in a session
+    #[clap(long, default_value_t = 16)]
+    max_users: usize,
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize logging.
@@ -26,60 +45,20 @@ async fn main() {
     log::info!("main: Initializing application");
 
     // Parse command line arguments
-    #[rustfmt::skip]
-    let args = clap::App::new(clap::crate_name!())
-        .version(clap::crate_version!())
-        .arg(clap::Arg::with_name("bind_address")
-            .value_name("bind_address")
-            .help("HTTP listener address")
-            .short("a")
-            .long("bind-address")
-            .required(true)
-        )
-        .arg(clap::Arg::with_name("bind_port")
-            .value_name("bind_port")
-            .help("HTTP listener port")
-            .short("p")
-            .long("bind-port")
-            .required(true)
-        )
-        .arg(clap::Arg::with_name("max_sessions")
-            .value_name("max_sessions")
-            .help("Maximum number of concurrent sessions")
-            .long("max-sessions")
-            .default_value("8")
-        )
-        .arg(clap::Arg::with_name("max_users")
-            .value_name("max_users")
-            .help("Maximum number of users in a session")
-            .long("max-users")
-            .default_value("16")
-        )
-        .get_matches();
+    let args = Args::parse();
 
-    let arg_bind_address = args.value_of("bind_address").unwrap();
-    let arg_bind_port = args.value_of("bind_port").unwrap();
-    let arg_max_sessions = args
-        .value_of("max_sessions")
-        .unwrap()
-        .parse()
-        .expect("Failed to parse max_sessions");
-    let arg_max_users = args
-        .value_of("max_users")
-        .unwrap()
-        .parse()
-        .expect("Failed to parse max_users");
-    log::info!("main: Binding to {}:{}", arg_bind_address, arg_bind_port);
-
-    let bind_address: std::net::IpAddr = arg_bind_address
+    // Create socket address from command line arguments
+    log::info!("main: Binding to {}:{}", args.bind_address, args.bind_port);
+    let bind_address: std::net::IpAddr = args
+        .bind_address
         .parse()
         .expect("Failed to parse bind address");
-    let bind_port: u16 = arg_bind_port.parse().expect("Failed to parse bind port");
-    let socket_address = std::net::SocketAddr::new(bind_address, bind_port);
+    let socket_address = std::net::SocketAddr::new(bind_address, args.bind_port);
 
+    // Create service context config and start server
     let ctx = Arc::new(ServiceContext::new(ServiceContextConfig {
-        max_sessions: arg_max_sessions,
-        max_users: arg_max_users,
+        max_sessions: args.max_sessions,
+        max_users: args.max_users,
     }));
     let server = hyper::server::Server::bind(&socket_address).serve(MakeService::new(ctx));
     log::info!("main: Server started");
