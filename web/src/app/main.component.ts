@@ -23,24 +23,26 @@ import { Subscription } from 'rxjs';
     </ul>
     <div *ngIf="displayCards() && !spectator">
       <h2>Cards</h2>
-      <mat-button-toggle-group [ngModel]="points" (ngModelChange)="setPoints($event)">
-        <mat-button-toggle color="primary" *ngFor="let card of cards" value="{{card}}">{{card}}</mat-button-toggle>
-      </mat-button-toggle-group>
+      <p class="cards">
+        <button mat-raised-button *ngFor="let card of cards" [color]="card === points ? 'primary' : 'basic'" (click)="setPoints(card)">{{card}}</button>
+      </p>
     </div>
-    <mat-checkbox [ngModel]="spectator" (ngModelChange)="setSpectator($event)">Spectator</mat-checkbox>
+    <p><mat-checkbox [ngModel]="spectator" (ngModelChange)="setSpectator($event)">Spectator</mat-checkbox></p>
     <div *ngIf="revealCards()">
       <h2>Statistics</h2>
-      Mean Vote: {{meanVote()}}<br />
-      High Voters: {{highVoters().join(", ")}}<br />
-      Low Voters: {{lowVoters().join(", ")}}
+      <p>
+        Mean Vote: {{meanVote()}}<br />
+        High Voters: {{highVoters().join(", ")}}<br />
+        Low Voters: {{lowVoters().join(", ")}}
+      </p>
     </div>
     <div *ngIf="displayControl()">
       <h2>Control</h2>
-      <button mat-raised-button color="primary" (click)="resetPoints()">Reset</button>
+      <p><button mat-raised-button color="primary" (click)="resetPoints()">Reset</button></p>
     </div>
     <div *ngIf="displayClaimSession()">
       <h2>Control</h2>
-      <button mat-raised-button color="primary" (click)="claimSession()">Claim Session</button>
+      <p><button mat-raised-button color="primary" (click)="claimSession()">Claim Session</button></p>
     </div>
   `,
   styles: [
@@ -48,6 +50,7 @@ import { Subscription } from 'rxjs';
     // aswell.  For the vertial padding we simply take the half of the
     // horizontal padding.
     ':host { padding: 8px 16px; display: block; }',
+    '.cards button { margin-right: 1em; margin-bottom: 1em; min-width: 5em; min-height: 3.5em; }',
   ],
 })
 export class MainComponent implements OnDestroy {
@@ -67,6 +70,9 @@ export class MainComponent implements OnDestroy {
         if (this.session === null) {
           this.router.navigate(['/login']);
         }
+        else {
+          this.points = this.session.state.users[this.session.uid].points?.toString() ?? null;
+        }
       }
     ));
     this.subscriptions.push(sessionService.error$.subscribe(
@@ -83,6 +89,7 @@ export class MainComponent implements OnDestroy {
   }
 
   setPoints(value: string) {
+    this.points = value;
     this.sessionService.setPoints(value);
   }
 
