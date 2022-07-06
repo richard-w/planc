@@ -109,5 +109,7 @@
       }
     }
   },
-  "defaultProject": "planc"
+  "cli": {
+    "analytics": false
+  }
 }
