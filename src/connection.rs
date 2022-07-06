@@ -52,6 +52,7 @@ impl Connection {
                             WebSocketMessage::Pong(_) => Ok(None),
                             WebSocketMessage::Text(text) => Ok(Some(text)),
                             WebSocketMessage::Binary(data) => Ok(Some(String::from_utf8(data)?)),
+                            WebSocketMessage::Frame(_) => Ok(None),
                         }
                     }
                 }),
