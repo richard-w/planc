@@ -1,6 +1,4 @@
 use super::*;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::atomic::AtomicI64;
 use std::time::Duration;
 use tokio::sync::watch;
@@ -281,41 +279,4 @@ impl Drop for Session {
         log::info!("Session::drop: Removing session \"{}\"", self.session_id);
         self.ctx.cleanup_session(&self.session_id);
     }
-}
-
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct SessionState {
-    pub users: HashMap<String, UserState>,
-    pub admin: Option<String>,
-}
-
-#[derive(Debug, Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserState {
-    pub name: Option<String>,
-    pub points: Option<String>,
-    pub is_spectator: bool,
-    #[serde(skip)]
-    pub kicked: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(tag = "tag", content = "content")]
-pub enum ClientMessage {
-    NameChange(String),
-    SetPoints(String),
-    ResetPoints,
-    Whoami,
-    ClaimSession,
-    KickUser(String),
-    SetSpectator(bool),
-}
-
-#[derive(Debug, Serialize)]
-#[serde(tag = "tag", content = "content")]
-pub enum ServerMessage {
-    State(SessionState),
-    Whoami(String),
-    Error(String),
-    KeepAlive,
 }
