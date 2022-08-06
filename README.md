@@ -32,9 +32,7 @@ You can now open the application in your webbrowser (localhost:8080).
 
 ### Development
 
-The cargo build system expects the frontend to be built already. The top-level docker build takes
-care of that automatically. It does not support incremental compilation though.
-
-To build the frontend you can use the `web/build.sh` script. It uses docker to setup a build
-environment for the frontend and generates the frontend artifacts in `web/dist/planc`. These
-artifacts will then be used by `cargo` when backend is built.
+Direct build via cargo requires that the `trunk` utility is in `$PATH`. You can install it via
+```bash
+cargo install trunk
+```

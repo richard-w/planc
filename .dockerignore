@@ -1,4 +1,4 @@
 /.git
 /web/dist
-/web/node_modules
+/web/target
 /target
