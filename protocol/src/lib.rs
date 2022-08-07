@@ -18,6 +18,7 @@ pub struct UserState {
     pub name: Option<String>,
     pub points: Option<String>,
     pub is_spectator: bool,
+    #[cfg(feature = "server")]
     #[serde(skip)]
     pub kicked: bool,
 }

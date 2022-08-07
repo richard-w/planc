@@ -5,7 +5,13 @@ edition = "2021"
 publish = false
 
 [dependencies]
+console_log = "0.2"
+futures = "*"
+gloo-net = "0.2"
+log = "0.4"
+serde_json = "1.0"
 yew = "0.19"
 yew-router = "0.16"
+wasm-bindgen-futures = "*"
 web-sys = "*"
 planc-protocol = { path = "../protocol", features = ["client"] }

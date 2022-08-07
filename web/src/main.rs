@@ -51,5 +51,6 @@ fn app() -> Html {
 }
 
 fn main() {
+    console_log::init_with_level(log::Level::Debug).unwrap();
     yew::start_app::<App>();
 }
