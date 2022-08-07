@@ -2,14 +2,12 @@ mod api;
 mod connection;
 mod context;
 mod error;
-mod protocol;
 mod session;
 mod web;
 
 pub use self::connection::*;
 pub use self::context::*;
 pub use self::error::*;
-pub use self::protocol::*;
 pub use self::session::*;
 
 use anyhow::{Error, Result};

@@ -2,13 +2,17 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[cfg_attr(feature = "server", derive(Serialize))]
+#[cfg_attr(feature = "client", derive(Deserialize))]
+#[derive(Debug, Clone, Default)]
 pub struct SessionState {
     pub users: HashMap<String, UserState>,
     pub admin: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[cfg_attr(feature = "server", derive(Serialize))]
+#[cfg_attr(feature = "client", derive(Deserialize))]
+#[derive(Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UserState {
     pub name: Option<String>,
@@ -18,7 +22,9 @@ pub struct UserState {
     pub kicked: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "server", derive(Deserialize))]
+#[cfg_attr(feature = "client", derive(Serialize))]
+#[derive(Debug, Clone)]
 #[serde(tag = "tag", content = "content")]
 pub enum ClientMessage {
     NameChange(String),
@@ -30,7 +36,9 @@ pub enum ClientMessage {
     SetSpectator(bool),
 }
 
-#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "server", derive(Serialize))]
+#[cfg_attr(feature = "client", derive(Deserialize))]
+#[derive(Debug, Clone)]
 #[serde(tag = "tag", content = "content")]
 pub enum ServerMessage {
     State(SessionState),

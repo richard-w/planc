@@ -7,3 +7,4 @@ publish = false
 [dependencies]
 yew = "0.19"
 yew-router = "0.16"
+planc-protocol = { path = "../protocol", features = ["client"] }
