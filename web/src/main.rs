@@ -1,10 +1,22 @@
+use std::rc::Rc;
+
 use yew::prelude::*;
 use yew_router::prelude::*;
+
+mod context;
+mod home;
+mod session;
+
+use self::context::*;
+use self::home::*;
+use self::session::*;
 
 #[derive(Clone, PartialEq, Routable)]
 enum Route {
     #[at("/")]
     Home,
+    #[at("/session/:id")]
+    Session { id: String },
     #[not_found]
     #[at("/404")]
     NotFound,
@@ -13,9 +25,10 @@ enum Route {
 fn switch(route: &Route) -> Html {
     match route {
         Route::Home => {
-            html! {
-                <h1>{"Planc"}</h1>
-            }
+            html! { <Home /> }
+        }
+        Route::Session { id } => {
+            html! { <Session id={id.clone()} /> }
         }
         Route::NotFound => {
             html! {
@@ -27,10 +40,13 @@ fn switch(route: &Route) -> Html {
 
 #[function_component(App)]
 fn app() -> Html {
+    let context = use_state(|| Rc::new(AppContext::default()));
     html! {
-        <BrowserRouter>
-            <Switch<Route> render={Switch::render(switch)} />
-        </BrowserRouter>
+        <ContextProvider<Rc<AppContext>> context={(*context).clone()}>
+            <BrowserRouter>
+                <Switch<Route> render={Switch::render(switch)} />
+            </BrowserRouter>
+        </ContextProvider<Rc<AppContext>>>
     }
 }
 
