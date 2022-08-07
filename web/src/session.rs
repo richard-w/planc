@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{fmt::Write, rc::Rc};
 
 use futures::prelude::*;
 use gloo_net::websocket::{futures::WebSocket, Message as WebSocketMessage};
@@ -32,15 +32,15 @@ pub fn session(props: &SessionProps) -> Html {
         }
         websocket_uri += &location.hostname().unwrap();
         if let Ok(port) = location.port() {
-            websocket_uri += &format!(":{}", port);
+            write!(websocket_uri, ":{}", port).unwrap();
         }
         websocket_uri += "/api/";
         websocket_uri += &props.id;
         websocket_uri
     };
-    let remote_state = use_state(|| SessionState::default());
-    let remote_uid = use_state(|| String::new());
-    let remote_error = use_state(|| String::new());
+    let remote_state = use_state(SessionState::default);
+    let remote_uid = use_state(String::default);
+    let remote_error = use_state(String::default);
     let _sender = {
         let name = name.clone();
         let remote_state = remote_state.clone();
