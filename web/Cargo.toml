@@ -2,6 +2,8 @@
 name = "planc-frontend"
 version = "0.0.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 yew = "0.19"
+yew-router = "0.16"
