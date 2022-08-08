@@ -41,7 +41,7 @@ pub fn session(props: &SessionProps) -> Html {
     let remote_state = use_state(SessionState::default);
     let remote_uid = use_state(String::default);
     let remote_error = use_state(String::default);
-    let _sender = {
+    let sender = {
         let name = name.clone();
         let remote_state = remote_state.clone();
         let remote_uid = remote_uid.clone();
@@ -108,6 +108,11 @@ pub fn session(props: &SessionProps) -> Html {
             <p>{format!("State: {:?}", *remote_state)}</p>
             <p>{format!("UID: {}", *remote_uid)}</p>
             <p>{format!("Error: {}", *remote_error)}</p>
+            <Cards on_click={
+                Callback::from(move |card: &'static str| {
+                    sender.unbounded_send(ClientMessage::SetPoints(card.to_string())).ok();
+                })
+            } />
         </>
     }
 }
