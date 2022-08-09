@@ -39,10 +39,9 @@ pub fn session(props: &SessionProps) -> Html {
         websocket_uri
     };
     let remote_state = use_state(SessionState::default);
-    let remote_uid = use_state(String::default);
-    let remote_error = use_state(String::default);
+    let remote_uid = use_state(|| Some(String::default()));
+    let remote_error = use_state(|| None);
     let sender = {
-        let name = name.clone();
         let remote_state = remote_state.clone();
         let remote_uid = remote_uid.clone();
         let remote_error = remote_error.clone();
@@ -72,8 +71,8 @@ pub fn session(props: &SessionProps) -> Html {
                     };
                     match message {
                         ServerMessage::State(state) => remote_state.set(state),
-                        ServerMessage::Whoami(uid) => remote_uid.set(uid),
-                        ServerMessage::Error(error) => remote_error.set(error),
+                        ServerMessage::Whoami(uid) => remote_uid.set(Some(uid)),
+                        ServerMessage::Error(error) => remote_error.set(Some(error)),
                         ServerMessage::KeepAlive => {}
                     }
                 }
@@ -101,18 +100,33 @@ pub fn session(props: &SessionProps) -> Html {
             sender
         })
     };
+    let is_admin = matches!((&*remote_uid, &remote_state.admin), (Some(uid), Some(admin_uid)) if uid == admin_uid);
     html! {
         <>
-            <p>{format!("Session ID: {}", props.id)}</p>
-            <p>{format!("User Name: {}", name)}</p>
-            <p>{format!("State: {:?}", *remote_state)}</p>
-            <p>{format!("UID: {}", *remote_uid)}</p>
-            <p>{format!("Error: {}", *remote_error)}</p>
+            <Participants
+                users={remote_state.users.clone()}
+                is_admin={is_admin}
+                on_kick={
+                    let sender = sender.clone();
+                    Callback::from(move |user_id| {
+                        sender.unbounded_send(ClientMessage::KickUser(user_id)).ok();
+                    })
+                }
+            />
             <Cards on_click={
+                let sender = sender.clone();
                 Callback::from(move |card: &'static str| {
                     sender.unbounded_send(ClientMessage::SetPoints(card.to_string())).ok();
                 })
             } />
+            if remote_state.admin.is_none() {
+                <button onclick={
+                    let sender = sender.clone();
+                    Callback::from(move |_| {
+                        sender.unbounded_send(ClientMessage::ClaimSession).ok();
+                    })
+                }>{"Claim Session"}</button>
+            }
         </>
     }
 }

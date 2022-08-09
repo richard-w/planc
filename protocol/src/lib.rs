@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "server", derive(Serialize))]
 #[cfg_attr(feature = "client", derive(Deserialize))]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SessionState {
     pub users: HashMap<String, UserState>,
     pub admin: Option<String>,
@@ -12,7 +12,7 @@ pub struct SessionState {
 
 #[cfg_attr(feature = "server", derive(Serialize))]
 #[cfg_attr(feature = "client", derive(Deserialize))]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UserState {
     pub name: Option<String>,
@@ -25,7 +25,7 @@ pub struct UserState {
 
 #[cfg_attr(feature = "server", derive(Deserialize))]
 #[cfg_attr(feature = "client", derive(Serialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[serde(tag = "tag", content = "content")]
 pub enum ClientMessage {
     NameChange(String),
@@ -39,7 +39,7 @@ pub enum ClientMessage {
 
 #[cfg_attr(feature = "server", derive(Serialize))]
 #[cfg_attr(feature = "client", derive(Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[serde(tag = "tag", content = "content")]
 pub enum ServerMessage {
     State(SessionState),

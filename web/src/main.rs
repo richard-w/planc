@@ -6,11 +6,13 @@ use yew_router::prelude::*;
 mod cards;
 mod context;
 mod home;
+mod participants;
 mod session;
 
 use self::cards::*;
 use self::context::*;
 use self::home::*;
+use self::participants::*;
 use self::session::*;
 
 #[derive(Clone, PartialEq, Routable)]
