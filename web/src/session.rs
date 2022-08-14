@@ -100,12 +100,11 @@ pub fn session(props: &SessionProps) -> Html {
             sender
         })
     };
-    let is_admin = matches!((&*remote_uid, &remote_state.admin), (Some(uid), Some(admin_uid)) if uid == admin_uid);
     html! {
         <>
             <Participants
-                users={remote_state.users.clone()}
-                is_admin={is_admin}
+                remote_state={(*remote_state).clone()}
+                remote_uid={(*remote_uid).clone()}
                 on_kick={client_message_callback(&sender, |user_id| ClientMessage::KickUser(user_id))}
             />
             <Cards

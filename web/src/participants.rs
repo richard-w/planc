@@ -1,13 +1,11 @@
-use std::collections::HashMap;
-
 use yew::prelude::*;
 
-use planc_protocol::UserState;
+use planc_protocol::SessionState;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct ParticipantsProps {
-    pub users: HashMap<String, UserState>,
-    pub is_admin: bool,
+    pub remote_state: SessionState,
+    pub remote_uid: Option<String>,
     pub on_kick: Callback<String>,
 }
 
@@ -15,6 +13,7 @@ pub struct ParticipantsProps {
 pub fn participants(props: &ParticipantsProps) -> Html {
     let users = {
         let mut users = props
+            .remote_state
             .users
             .iter()
             .map(|(user_id, user_state)| (user_id.clone(), user_state.clone()))
@@ -22,6 +21,7 @@ pub fn participants(props: &ParticipantsProps) -> Html {
         users.sort_by(|a, b| a.0.cmp(&b.0));
         users
     };
+    let is_admin = matches!((&props.remote_uid, &props.remote_state.admin), (Some(uid), Some(admin_uid)) if uid == admin_uid);
     let user_lines = users.iter().map(|(user_id, user_state)| {
         let name = user_state.name.clone().unwrap_or_default();
         let points = {
@@ -36,7 +36,7 @@ pub fn participants(props: &ParticipantsProps) -> Html {
             <tr>
                 <td>{name}</td>
                 <td>{points}</td>
-                if props.is_admin {
+                if is_admin {
                     <td><button onclick={
                         let on_kick = props.on_kick.clone();
                         let user_id = user_id.clone();
@@ -51,7 +51,7 @@ pub fn participants(props: &ParticipantsProps) -> Html {
             <tr>
                 <th>{"Name"}</th>
                 <th>{"Points"}</th>
-                if props.is_admin {
+                if is_admin {
                     <th>{"Kick"}</th>
                 }
             </tr>
