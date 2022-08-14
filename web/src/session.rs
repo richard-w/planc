@@ -102,20 +102,24 @@ pub fn session(props: &SessionProps) -> Html {
     };
     html! {
         <>
-            <Participants
-                remote_state={(*remote_state).clone()}
-                remote_uid={(*remote_uid).clone()}
-                on_kick={client_message_callback(&sender, |user_id| ClientMessage::KickUser(user_id))}
-            />
-            <Cards
-                on_click={client_message_callback(&sender, |card: &str| ClientMessage::SetPoints(card.to_string()))}
-            />
-            <Admin
-                remote_state={(*remote_state).clone()}
-                remote_uid={(*remote_uid).clone()}
-                on_claim_session={client_message_callback(&sender, |_| ClientMessage::ClaimSession)}
-                on_reset_points={client_message_callback(&sender, |_| ClientMessage::ResetPoints)}
-            />
+            if let Some(error) = (*remote_error).clone() {
+                <p><b>{"Error: "}</b>{error}</p>
+            } else {
+                <Participants
+                    remote_state={(*remote_state).clone()}
+                    remote_uid={(*remote_uid).clone()}
+                    on_kick={client_message_callback(&sender, |user_id| ClientMessage::KickUser(user_id))}
+                />
+                <Cards
+                    on_click={client_message_callback(&sender, |card: &str| ClientMessage::SetPoints(card.to_string()))}
+                />
+                <Admin
+                    remote_state={(*remote_state).clone()}
+                    remote_uid={(*remote_uid).clone()}
+                    on_claim_session={client_message_callback(&sender, |_| ClientMessage::ClaimSession)}
+                    on_reset_points={client_message_callback(&sender, |_| ClientMessage::ResetPoints)}
+                />
+            }
         </>
     }
 }
