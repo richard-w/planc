@@ -3,12 +3,14 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+mod admin;
 mod cards;
 mod context;
 mod home;
 mod participants;
 mod session;
 
+use self::admin::*;
 use self::cards::*;
 use self::context::*;
 use self::home::*;

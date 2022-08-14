@@ -127,6 +127,14 @@ pub fn session(props: &SessionProps) -> Html {
                     })
                 }>{"Claim Session"}</button>
             }
+            if is_admin {
+                <Admin on_reset_points={
+                    let sender = sender.clone();
+                    Callback::from(move |_| {
+                        sender.unbounded_send(ClientMessage::ResetPoints).ok();
+                    })
+                } />
+            }
         </>
     }
 }
