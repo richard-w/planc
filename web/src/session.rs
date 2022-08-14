@@ -1,6 +1,6 @@
 use std::{fmt::Write, rc::Rc};
 
-use futures::prelude::*;
+use futures::{channel::mpsc::UnboundedSender, prelude::*};
 use gloo_net::websocket::{futures::WebSocket, Message as WebSocketMessage};
 use yew::prelude::*;
 
@@ -106,35 +106,28 @@ pub fn session(props: &SessionProps) -> Html {
             <Participants
                 users={remote_state.users.clone()}
                 is_admin={is_admin}
-                on_kick={
-                    let sender = sender.clone();
-                    Callback::from(move |user_id| {
-                        sender.unbounded_send(ClientMessage::KickUser(user_id)).ok();
-                    })
-                }
+                on_kick={client_message_callback(&sender, |user_id| ClientMessage::KickUser(user_id))}
             />
-            <Cards on_click={
-                let sender = sender.clone();
-                Callback::from(move |card: &'static str| {
-                    sender.unbounded_send(ClientMessage::SetPoints(card.to_string())).ok();
-                })
-            } />
-            if remote_state.admin.is_none() {
-                <button onclick={
-                    let sender = sender.clone();
-                    Callback::from(move |_| {
-                        sender.unbounded_send(ClientMessage::ClaimSession).ok();
-                    })
-                }>{"Claim Session"}</button>
-            }
-            if is_admin {
-                <Admin on_reset_points={
-                    let sender = sender.clone();
-                    Callback::from(move |_| {
-                        sender.unbounded_send(ClientMessage::ResetPoints).ok();
-                    })
-                } />
-            }
+            <Cards
+                on_click={client_message_callback(&sender, |card: &str| ClientMessage::SetPoints(card.to_string()))}
+            />
+            <Admin
+                remote_state={(*remote_state).clone()}
+                remote_uid={(*remote_uid).clone()}
+                on_claim_session={client_message_callback(&sender, |_| ClientMessage::ClaimSession)}
+                on_reset_points={client_message_callback(&sender, |_| ClientMessage::ResetPoints)}
+            />
         </>
     }
+}
+
+fn client_message_callback<F, T>(sender: &UnboundedSender<ClientMessage>, f: F) -> Callback<T>
+where
+    F: Fn(T) -> ClientMessage + 'static,
+{
+    let sender = sender.clone();
+    Callback::from(move |x| {
+        let message = f(x);
+        sender.unbounded_send(message).ok();
+    })
 }
