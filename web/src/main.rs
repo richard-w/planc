@@ -9,6 +9,7 @@ mod context;
 mod home;
 mod participants;
 mod session;
+mod websocket;
 
 use self::admin::*;
 use self::cards::*;
@@ -16,6 +17,7 @@ use self::context::*;
 use self::home::*;
 use self::participants::*;
 use self::session::*;
+use self::websocket::*;
 
 #[derive(Clone, PartialEq, Routable)]
 enum Route {

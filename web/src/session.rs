@@ -1,7 +1,6 @@
 use std::{fmt::Write, rc::Rc};
 
-use futures::{channel::mpsc::UnboundedSender, prelude::*};
-use gloo_net::websocket::{futures::WebSocket, Message as WebSocketMessage};
+use gloo_net::websocket::futures::WebSocket;
 use yew::prelude::*;
 
 use super::*;
@@ -47,59 +46,22 @@ pub fn session(props: &SessionProps) -> Html {
         let remote_error = remote_error.clone();
         use_state(move || {
             let websocket = WebSocket::open(&websocket_uri).expect("Error opening connection");
-            let (mut sink, mut stream) = websocket.split();
-            wasm_bindgen_futures::spawn_local(async move {
-                // Handle received messages
-                while let Some(raw_message) = stream.next().await {
-                    let text = match raw_message {
-                        Ok(WebSocketMessage::Text(text)) => text,
-                        Ok(_) => {
-                            log::warn!("Invalid message received");
-                            continue;
-                        }
-                        Err(err) => {
-                            log::error!("Error received message: {}", err);
-                            continue;
-                        }
-                    };
-                    let message = match serde_json::from_str(&text) {
-                        Ok(message) => message,
-                        Err(err) => {
-                            log::error!("Error decoding received message: {}", err);
-                            continue;
-                        }
-                    };
-                    match message {
-                        ServerMessage::State(state) => remote_state.set(state),
-                        ServerMessage::Whoami(uid) => remote_uid.set(Some(uid)),
-                        ServerMessage::Error(error) => remote_error.set(Some(error)),
-                        ServerMessage::KeepAlive => {}
-                    }
-                }
+            let sender = WebSocketProcessor::new(websocket, move |message| match message {
+                ServerMessage::State(state) => remote_state.set(state),
+                ServerMessage::Whoami(uid) => remote_uid.set(Some(uid)),
+                ServerMessage::Error(error) => remote_error.set(Some(error)),
+                ServerMessage::KeepAlive => {}
             });
-            let (sender, mut receiver) = futures::channel::mpsc::unbounded();
-            wasm_bindgen_futures::spawn_local(async move {
-                // Send messages
-                while let Some(message) = receiver.next().await {
-                    let text = serde_json::to_string(&message).unwrap();
-                    let raw_message = WebSocketMessage::Text(text);
-                    if let Err(err) = sink.send(raw_message).await {
-                        log::error!("Error sending message: {}", err);
-                    }
-                }
-            });
-            {
-                let mut sender = sender.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    // Send whoami request
-                    sender.send(ClientMessage::Whoami).await.unwrap();
-                    // Send name change request
-                    sender.send(ClientMessage::NameChange(name)).await.unwrap();
-                });
-            }
+            // Send whoami request
+            sender.send(ClientMessage::Whoami).unwrap();
+            // Send name change request
+            sender.send(ClientMessage::NameChange(name)).unwrap();
             sender
         })
     };
+    if (*remote_error).is_some() {
+        sender.close();
+    }
     html! {
         <>
             if let Some(error) = (*remote_error).clone() {
@@ -108,7 +70,7 @@ pub fn session(props: &SessionProps) -> Html {
                 <Participants
                     remote_state={(*remote_state).clone()}
                     remote_uid={(*remote_uid).clone()}
-                    on_kick={client_message_callback(&sender, |user_id| ClientMessage::KickUser(user_id))}
+                    on_kick={client_message_callback(&sender, ClientMessage::KickUser)}
                 />
                 <Cards
                     on_click={client_message_callback(&sender, |card: &str| ClientMessage::SetPoints(card.to_string()))}
@@ -124,13 +86,13 @@ pub fn session(props: &SessionProps) -> Html {
     }
 }
 
-fn client_message_callback<F, T>(sender: &UnboundedSender<ClientMessage>, f: F) -> Callback<T>
+fn client_message_callback<F, T>(sender: &WebSocketProcessor, f: F) -> Callback<T>
 where
     F: Fn(T) -> ClientMessage + 'static,
 {
     let sender = sender.clone();
     Callback::from(move |x| {
         let message = f(x);
-        sender.unbounded_send(message).ok();
+        sender.send(message).unwrap();
     })
 }
