@@ -533,7 +533,7 @@ dependencies = [
  "hyper",
  "include_dir",
  "log",
- "planc-protocol",
+ "planc-common",
  "serde",
  "serde_json",
  "tokio",
@@ -541,7 +541,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "planc-protocol"
+name = "planc-common"
 version = "0.0.0"
 dependencies = [
  "serde",

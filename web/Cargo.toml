@@ -15,4 +15,4 @@ yew = "0.19"
 yew-router = "0.16"
 wasm-bindgen-futures = "*"
 web-sys = "*"
-planc-protocol = { path = "../protocol", features = ["client"] }
+planc-common = { path = "../common", features = ["client"] }

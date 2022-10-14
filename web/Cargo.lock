@@ -389,6 +389,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "planc-common"
+version = "0.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "planc-frontend"
 version = "0.0.0"
 dependencies = [
@@ -397,19 +404,12 @@ dependencies = [
  "futures",
  "gloo-net",
  "log",
- "planc-protocol",
+ "planc-common",
  "serde_json",
  "wasm-bindgen-futures",
  "web-sys",
  "yew",
  "yew-router",
-]
-
-[[package]]
-name = "planc-protocol"
-version = "0.0.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]

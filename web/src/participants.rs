@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use planc_protocol::SessionState;
+use planc_common::SessionState;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct ParticipantsProps {

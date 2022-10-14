@@ -3,7 +3,7 @@ use tokio_tungstenite::tungstenite;
 use tokio_tungstenite::WebSocketStream;
 
 use super::*;
-use planc_protocol::ServerMessage;
+use planc_common::ServerMessage;
 
 pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Response> {
     // Parse path '/api/<session_id>'

@@ -8,7 +8,7 @@ use futures::{
 };
 use gloo_net::websocket::{futures::WebSocket, Message as WebSocketMessage};
 
-use planc_protocol::{ClientMessage, ServerMessage};
+use planc_common::{ClientMessage, ServerMessage};
 
 struct CloseHandles {
     eventual_sink: oneshot::Receiver<SplitSink<WebSocket, WebSocketMessage>>,

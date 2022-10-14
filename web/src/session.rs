@@ -4,7 +4,7 @@ use gloo_net::websocket::futures::WebSocket;
 use yew::prelude::*;
 
 use super::*;
-use planc_protocol::{ClientMessage, ServerMessage, SessionState};
+use planc_common::{ClientMessage, ServerMessage, SessionState};
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct SessionProps {

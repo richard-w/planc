@@ -5,7 +5,7 @@ use tokio::sync::watch;
 use tokio::sync::Mutex;
 
 use super::*;
-use planc_protocol::*;
+use planc_common::*;
 
 pub struct Session {
     ctx: Arc<ServiceContext>,
