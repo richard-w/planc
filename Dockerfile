@@ -1,5 +1,5 @@
 # Frontend build image.
-FROM node:16 AS frontend_build
+FROM node:22 AS frontend_build
 # Add user and group.
 USER node:node
 # Copy package info.

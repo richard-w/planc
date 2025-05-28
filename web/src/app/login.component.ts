@@ -32,7 +32,8 @@ class LoginDialogResult {
   `,
   styles: [
     '.login-dialog-content { overflow: visible; }',
-  ]
+  ],
+  standalone: false,
 })
 export class LoginDialogComponent {
   constructor(@Inject(MAT_DIALOG_DATA) public result: LoginDialogResult) {
@@ -48,7 +49,8 @@ export class LoginDialogComponent {
 @Component({
   selector: 'app-login',
   template: '',
-  styles: []
+  styles: [],
+  standalone: false,
 })
 export class LoginComponent implements OnInit {
   constructor(

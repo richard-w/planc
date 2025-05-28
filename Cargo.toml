@@ -6,7 +6,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
-env_logger = "0.10"
+env_logger = "0.11"
 futures = "0.3"
 hyper = { version = "0.14", features = ["server", "http1", "tcp"] }
 include_dir = "0.7"

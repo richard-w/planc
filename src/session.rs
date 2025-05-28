@@ -235,7 +235,7 @@ impl Session {
                 }
                 ClientMessage::SetSpectator(is_spectator) => {
                     self.update_state(|mut state| {
-                        let mut user_state = state.users.get_mut(user_id).unwrap();
+                        let user_state = state.users.get_mut(user_id).unwrap();
                         user_state.is_spectator = is_spectator;
                         user_state.points = None;
                         Ok(state)
