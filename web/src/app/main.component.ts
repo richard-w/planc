@@ -52,6 +52,7 @@ import { Subscription } from 'rxjs';
     ':host { padding: 8px 16px; display: block; }',
     '.cards button { margin-right: 1em; margin-bottom: 1em; min-width: 5em; min-height: 3.5em; }',
   ],
+  standalone: false,
 })
 export class MainComponent implements OnDestroy {
   session: Session | null = null;
