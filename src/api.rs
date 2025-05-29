@@ -1,7 +1,6 @@
 use super::*;
-use hyper::{Body, StatusCode};
-use tokio_tungstenite::tungstenite;
-use tokio_tungstenite::WebSocketStream;
+use hyper::StatusCode;
+use tokio_tungstenite::{tungstenite, WebSocketStream};
 
 pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Response> {
     // Parse path '/api/<session_id>'
@@ -13,21 +12,22 @@ pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Res
         None => {
             return Ok(hyper::Response::builder()
                 .status(StatusCode::FORBIDDEN)
-                .body(Body::empty())?);
+                .body(Full::default())?);
         }
     };
     if components.next().is_some() {
         return Ok(hyper::Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Body::empty())?);
+            .body(Full::default())?);
     }
 
-    let response = tungstenite::handshake::server::create_response_with_body(&req, Body::empty)?;
+    let response = tungstenite::handshake::server::create_response_with_body(&req, Full::default)?;
     tokio::spawn(
         hyper::upgrade::on(req)
             .then(|upgraded| async move {
+                let upgraded = hyper_util::rt::TokioIo::new(upgraded?);
                 let websocket = WebSocketStream::from_raw_socket(
-                    upgraded?,
+                    upgraded,
                     tungstenite::protocol::Role::Server,
                     None,
                 )

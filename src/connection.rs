@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::tungstenite::Error as WebSocketError;
 use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
+use tokio_tungstenite::tungstenite::Utf8Bytes;
 use tokio_tungstenite::WebSocketStream;
 
 pub struct Connection {
@@ -50,8 +51,10 @@ impl Connection {
                                 Ok(None)
                             }
                             WebSocketMessage::Pong(_) => Ok(None),
-                            WebSocketMessage::Text(text) => Ok(Some(text)),
-                            WebSocketMessage::Binary(data) => Ok(Some(String::from_utf8(data)?)),
+                            WebSocketMessage::Text(text) => Ok(Some(text.to_string())),
+                            WebSocketMessage::Binary(data) => {
+                                Ok(Some(String::from_utf8(data.to_vec())?))
+                            }
                             WebSocketMessage::Frame(_) => Ok(None),
                         }
                     }
@@ -89,7 +92,9 @@ pub struct Sender {
 impl Sender {
     pub async fn send<T: Serialize>(&mut self, msg: &T) -> Result<()> {
         self.channel
-            .send(WebSocketMessage::Text(serde_json::to_string(msg)?))
+            .send(WebSocketMessage::Text(Utf8Bytes::from(
+                serde_json::to_string(msg)?,
+            )))
             .await?;
         Ok(())
     }

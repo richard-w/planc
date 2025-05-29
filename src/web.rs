@@ -1,5 +1,5 @@
 use super::*;
-use hyper::{Body, StatusCode};
+use hyper::{body::Bytes, StatusCode};
 use include_dir::{include_dir, Dir};
 
 pub async fn route_request(req: Request) -> Result<Response> {
@@ -23,7 +23,7 @@ pub async fn route_request(req: Request) -> Result<Response> {
             hyper::Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", content_type)
-                .body(Body::from(file.contents()))
+                .body(Full::new(Bytes::from(file.contents())))
         })
         .or_else(|| {
             // Fallback path just returns index.html so we can handle most routing in the frontend.
@@ -31,7 +31,7 @@ pub async fn route_request(req: Request) -> Result<Response> {
                 hyper::Response::builder()
                     .status(StatusCode::OK)
                     .header("Content-Type", "text/html")
-                    .body(Body::from(file.contents()))
+                    .body(Full::new(Bytes::from(file.contents())))
             })
         })
         .unwrap_or_else(|| {
@@ -39,7 +39,7 @@ pub async fn route_request(req: Request) -> Result<Response> {
             // setups.
             hyper::Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(Body::from("NOT FOUND"))
+                .body(Full::new(Bytes::from("NOT FOUND")))
         })?;
 
     Ok(response)

@@ -15,12 +15,14 @@ pub use self::session::*;
 use anyhow::{Error, Result};
 use clap::Parser;
 use futures::prelude::*;
+use http_body_util::Full;
+use hyper::body::Bytes;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll};
+use tokio::net::TcpListener;
 
-type Request = hyper::Request<hyper::Body>;
-type Response = hyper::Response<hyper::Body>;
+type Request = hyper::Request<hyper::body::Incoming>;
+type Response = hyper::Response<Full<Bytes>>;
 
 /// Command line arguments
 #[derive(Parser, Debug)]
@@ -41,7 +43,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     // Initialize logging.
     env_logger::init();
     log::info!("main: Initializing application");
@@ -57,39 +59,32 @@ async fn main() {
         .expect("Failed to parse bind address");
     let socket_address = std::net::SocketAddr::new(bind_address, args.bind_port);
 
-    // Create service context config and start server
+    // Create service context config
     let ctx = Arc::new(ServiceContext::new(ServiceContextConfig {
         max_sessions: args.max_sessions,
         max_users: args.max_users,
     }));
-    let server = hyper::server::Server::bind(&socket_address).serve(MakeService::new(ctx));
-    log::info!("main: Server started");
 
-    server.await.expect("Server task failure");
-}
+    // Create tcp listener.
+    let tcp_listener = TcpListener::bind(&socket_address).await?;
 
-struct MakeService {
-    ctx: Arc<ServiceContext>,
-}
-
-impl MakeService {
-    pub fn new(ctx: Arc<ServiceContext>) -> Self {
-        Self { ctx }
-    }
-}
-
-impl hyper::service::Service<&hyper::server::conn::AddrStream> for MakeService {
-    type Response = Service;
-    type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send + Sync>>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, _conn: &hyper::server::conn::AddrStream) -> Self::Future {
-        let ctx = self.ctx.clone();
-        Box::pin(async move { Ok(Service::new(ctx)) })
+    loop {
+        match tcp_listener.accept().await {
+            Ok((tcp_stream, peer_addr)) => {
+                log::info!("main: Incoming connection: {}", peer_addr);
+                let service = Service::new(Arc::clone(&ctx));
+                tokio::spawn(async move {
+                    let tcp_stream = hyper_util::rt::TokioIo::new(tcp_stream);
+                    let result = hyper::server::conn::http1::Builder::new()
+                        .serve_connection(tcp_stream, service)
+                        .await;
+                    if let Err(err) = result {
+                        log::warn!("Error serving connection: {}", err);
+                    }
+                });
+            }
+            Err(err) => log::warn!("main: Accept error: {}", err),
+        }
     }
 }
 
@@ -108,11 +103,7 @@ impl hyper::service::Service<Request> for Service {
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send>>;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<()>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request) -> Self::Future {
+    fn call(&self, req: Request) -> Self::Future {
         let ctx = self.ctx.clone();
         Box::pin(async move { route_request(req, ctx).await })
     }
