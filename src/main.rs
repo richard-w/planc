@@ -77,6 +77,7 @@ async fn main() -> anyhow::Result<()> {
                     let tcp_stream = hyper_util::rt::TokioIo::new(tcp_stream);
                     let result = hyper::server::conn::http1::Builder::new()
                         .serve_connection(tcp_stream, service)
+                        .with_upgrades()
                         .await;
                     if let Err(err) = result {
                         log::warn!("Error serving connection: {}", err);
