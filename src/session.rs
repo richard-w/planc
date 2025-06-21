@@ -3,6 +3,7 @@ use std::sync::atomic::AtomicI64;
 use std::time::Duration;
 use tokio::sync::watch;
 use tokio::sync::Mutex;
+use tracing::Instrument;
 
 pub struct Session {
     ctx: Arc<ServiceContext>,
@@ -14,8 +15,9 @@ pub struct Session {
 }
 
 impl Session {
+    #[::tracing::instrument(skip(ctx), name = "Session::new")]
     pub fn new(ctx: Arc<ServiceContext>, session_id: &str, max_users: usize) -> Self {
-        log::info!("Session::new: Creating session \"{}\"", session_id);
+        tracing::info!(session_id, "new_session");
         let session_id = session_id.to_string();
         let (session_state_tx, session_state_rx) = watch::channel(SessionState::default());
         let session_state_tx = Mutex::new(session_state_tx);
@@ -30,12 +32,14 @@ impl Session {
         }
     }
 
+    #[::tracing::instrument(skip(self, conn), name = "Session::user", fields(session_id = self.session_id, user_id))]
     pub async fn join(&self, mut conn: Connection) -> Result<()> {
         // Get a unique user id for this session.
         let user_id = self
             .next_user_id
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
             .to_string();
+        ::tracing::Span::current().record("user_id", &user_id);
 
         // Add user to session state.
         let add_user_result = self
@@ -49,11 +53,7 @@ impl Session {
             })
             .await;
         if let Err(err) = add_user_result {
-            log::warn!(
-                "Session::join: Joining \"{}\" denied: {}",
-                self.session_id,
-                err
-            );
+            ::tracing::warn!("join_denied");
             conn.send(&ServerMessage::Error(format!(
                 "Error joining session: {}",
                 err
@@ -61,82 +61,84 @@ impl Session {
             .await?;
             return Ok(());
         }
-        log::info!(
-            "Session::join: Joined user {} to session \"{}\"",
-            user_id,
-            self.session_id
-        );
+        ::tracing::info!("joined");
 
         // Subscribe client to state updates.
         let mut sender = conn.sender();
         let mut session_state_rx = self.session_state_rx.clone();
         let cloned_user_id = user_id.clone();
-        tokio::spawn(async move {
-            let user_id = cloned_user_id;
-            while session_state_rx.changed().await.is_ok() {
-                // Clone state for some ad-hoc modifications and checks.
-                let mut new_state = session_state_rx.borrow().to_owned();
+        tokio::spawn(
+            async move {
+                let user_id = cloned_user_id;
+                while session_state_rx.changed().await.is_ok() {
+                    // Clone state for some ad-hoc modifications and checks.
+                    let mut new_state = session_state_rx.borrow().to_owned();
 
-                // Get a reference to this user's state or terminate this task.
-                let user = if let Some(user) = new_state.users.get(&user_id) {
-                    user
-                } else {
-                    break;
-                };
+                    // Get a reference to this user's state or terminate this task.
+                    let user = if let Some(user) = new_state.users.get(&user_id) {
+                        user
+                    } else {
+                        break;
+                    };
 
-                // Check if this user was kicked and stop this task if that is the case.
-                if user.kicked {
-                    if let Err(err) = sender
-                        .send(&ServerMessage::Error(
-                            "You have been kicked from the session".to_string(),
-                        ))
-                        .await
-                    {
-                        log::warn!("Session::join/send_state_task/send_kick_message: {}", err);
+                    // Check if this user was kicked and stop this task if that is the case.
+                    if user.kicked {
+                        if let Err(err) = sender
+                            .send(&ServerMessage::Error(
+                                "You have been kicked from the session".to_string(),
+                            ))
+                            .await
+                        {
+                            ::tracing::warn!(?err, "send_state_task/send_kick_message");
+                        }
+                        break;
                     }
-                    break;
-                }
 
-                // Mask kicked users.
-                new_state.users.retain(|_, user| !user.kicked);
+                    // Mask kicked users.
+                    new_state.users.retain(|_, user| !user.kicked);
 
-                // Mask points so they are not visible from the console.
-                if new_state
-                    .users
-                    .values()
-                    .any(|user| !user.is_spectator && user.points.is_none())
-                {
-                    new_state
+                    // Mask points so they are not visible from the console.
+                    if new_state
                         .users
-                        .iter_mut()
-                        .filter(|&(item_user_id, _)| *item_user_id != user_id)
-                        .for_each(|(_, other_user)| {
-                            if other_user.points.is_some() {
-                                other_user.points = Some("-1".to_string());
-                            }
-                        });
-                }
+                        .values()
+                        .any(|user| !user.is_spectator && user.points.is_none())
+                    {
+                        new_state
+                            .users
+                            .iter_mut()
+                            .filter(|&(item_user_id, _)| *item_user_id != user_id)
+                            .for_each(|(_, other_user)| {
+                                if other_user.points.is_some() {
+                                    other_user.points = Some("-1".to_string());
+                                }
+                            });
+                    }
 
-                // Send the modified state.
-                if let Err(err) = sender.send(&ServerMessage::State(new_state)).await {
-                    log::warn!("Session::join/send_state_task/send_state_message: {}", err);
-                    break;
+                    // Send the modified state.
+                    if let Err(err) = sender.send(&ServerMessage::State(new_state)).await {
+                        ::tracing::warn!(?err, "send_state_task/send_state_message");
+                        break;
+                    }
                 }
             }
-        });
+            .instrument(::tracing::Span::current()),
+        );
 
         // Send a keep-alive message every 5 seconds. This may be necessary to keep the websocket
         // connection alive when certain reverse proxies are used.
         let mut sender = conn.sender();
-        tokio::spawn(async move {
-            while sender.send(&ServerMessage::KeepAlive).await.is_ok() {
-                tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::spawn(
+            async move {
+                while sender.send(&ServerMessage::KeepAlive).await.is_ok() {
+                    tokio::time::sleep(Duration::from_secs(5)).await;
+                }
             }
-        });
+            .instrument(::tracing::Span::current()),
+        );
 
         // Listen to messages from the connection.
         if let Err(err) = self.handle_connection(conn, &user_id).await {
-            log::warn!("Session::join/handle_connection: {}", err);
+            ::tracing::warn!(?err, "handle_connection");
         }
 
         // Remove user from state.
@@ -149,11 +151,7 @@ impl Session {
         })
         .await?;
 
-        log::info!(
-            "Session::join: User {} leaving session \"{}\"",
-            user_id,
-            self.session_id
-        );
+        ::tracing::info!("user_leaving");
         Ok(())
     }
 
@@ -168,7 +166,11 @@ impl Session {
             let result = match msg? {
                 ClientMessage::NameChange(name) if name.len() <= 32 => {
                     self.update_state(|mut state| {
-                        if state.users.values().all(|user| user.name.as_ref() != Some(&name)) {
+                        if state
+                            .users
+                            .values()
+                            .all(|user| user.name.as_ref() != Some(&name))
+                        {
                             state.users.get_mut(user_id).unwrap().name = Some(name.clone());
                             Ok(state)
                         } else {
@@ -209,7 +211,7 @@ impl Session {
                     self.update_state(|mut state| {
                         if state.admin.is_none() {
                             state.admin = Some(user_id.to_string());
-                            log::info!("Session::handle_connection: User {} claiming session \"{}\"", user_id, self.session_id);
+                            ::tracing::info!("claiming_session");
                             Ok(state)
                         } else {
                             Err(PlancError::InsufficientPermissions.into())
@@ -222,7 +224,7 @@ impl Session {
                         if state.admin.as_deref() == Some(user_id) {
                             if let Some(kickee) = state.users.get_mut(&kickee_id) {
                                 kickee.kicked = true;
-                                log::info!("Session::handle_connection: Kicking user {} from session \"{}\"", kickee_id, self.session_id);
+                                ::tracing::info!(kickee_id, "kicking_user");
                                 Ok(state)
                             } else {
                                 Err(PlancError::UnknownUserId.into())
@@ -275,8 +277,9 @@ impl Session {
 }
 
 impl Drop for Session {
+    #[tracing::instrument(skip(self), name = "Session::drop", fields(session_id = self.session_id))]
     fn drop(&mut self) {
-        log::info!("Session::drop: Removing session \"{}\"", self.session_id);
+        ::tracing::info!("Session::drop: Removing session \"{}\"", self.session_id);
         self.ctx.cleanup_session(&self.session_id);
     }
 }

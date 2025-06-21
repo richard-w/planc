@@ -20,6 +20,7 @@ use hyper::body::Bytes;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tracing_subscriber::prelude::*;
 
 type Request = hyper::Request<hyper::body::Incoming>;
 type Response = hyper::Response<Full<Bytes>>;
@@ -44,15 +45,29 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize logging.
-    env_logger::init();
-    log::info!("main: Initializing application");
+    // Initialize tracing.
+    let tracing_format = ::tracing_subscriber::fmt::layer()
+        .json()
+        .flatten_event(true)
+        .with_span_list(false);
+    let tracing_filter = ::tracing_subscriber::EnvFilter::try_from_default_env()
+        .or_else(|_| ::tracing_subscriber::EnvFilter::try_new("info"))
+        .unwrap();
+    ::tracing_subscriber::registry()
+        .with(tracing_format)
+        .with(tracing_filter)
+        .init();
+    ::tracing::info!("init_application");
 
     // Parse command line arguments
     let args = Args::parse();
 
     // Create socket address from command line arguments
-    log::info!("main: Binding to {}:{}", args.bind_address, args.bind_port);
+    ::tracing::info!(
+        bind_address = args.bind_address,
+        bind_port = args.bind_port,
+        "binding_listener"
+    );
     let bind_address: std::net::IpAddr = args
         .bind_address
         .parse()
@@ -71,7 +86,7 @@ async fn main() -> anyhow::Result<()> {
     loop {
         match tcp_listener.accept().await {
             Ok((tcp_stream, peer_addr)) => {
-                log::info!("main: Incoming connection: {}", peer_addr);
+                ::tracing::info!(peer_addr = peer_addr.to_string(), "incoming_connection");
                 let service = Service::new(Arc::clone(&ctx));
                 tokio::spawn(async move {
                     let tcp_stream = hyper_util::rt::TokioIo::new(tcp_stream);
@@ -80,11 +95,11 @@ async fn main() -> anyhow::Result<()> {
                         .with_upgrades()
                         .await;
                     if let Err(err) = result {
-                        log::warn!("Error serving connection: {}", err);
+                        ::tracing::warn!(?err, "connection");
                     }
                 });
             }
-            Err(err) => log::warn!("main: Accept error: {}", err),
+            Err(err) => ::tracing::warn!(?err, "accept"),
         }
     }
 }

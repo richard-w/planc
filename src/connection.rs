@@ -28,7 +28,7 @@ impl Connection {
                     Ok(_) => {}
                     Err(WebSocketError::ConnectionClosed) => break,
                     Err(err) => {
-                        log::warn!("Connection/sink::send: {:?}", err);
+                        ::tracing::warn!(?err, "Connection/sink::send");
                         break;
                     }
                 }

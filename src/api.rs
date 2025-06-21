@@ -47,7 +47,7 @@ pub async fn route_request(req: Request, ctx: Arc<ServiceContext>) -> Result<Res
             })
             .map(|result| {
                 result.unwrap_or_else(|err| {
-                    log::warn!("route_request: {:?}", err);
+                    ::tracing::warn!(?err, "route_request");
                 });
             }),
     );
