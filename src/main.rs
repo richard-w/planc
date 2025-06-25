@@ -17,6 +17,7 @@ use clap::Parser;
 use futures::prelude::*;
 use http_body_util::Full;
 use hyper::body::Bytes;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -87,7 +88,7 @@ async fn main() -> anyhow::Result<()> {
         match tcp_listener.accept().await {
             Ok((tcp_stream, peer_addr)) => {
                 ::tracing::info!(peer_addr = peer_addr.to_string(), "incoming_connection");
-                let service = Service::new(Arc::clone(&ctx));
+                let service = Service::new(Arc::clone(&ctx), peer_addr);
                 tokio::spawn(async move {
                     let tcp_stream = hyper_util::rt::TokioIo::new(tcp_stream);
                     let result = hyper::server::conn::http1::Builder::new()
@@ -106,11 +107,12 @@ async fn main() -> anyhow::Result<()> {
 
 struct Service {
     ctx: Arc<ServiceContext>,
+    peer_addr: SocketAddr,
 }
 
 impl Service {
-    pub fn new(ctx: Arc<ServiceContext>) -> Self {
-        Self { ctx }
+    pub fn new(ctx: Arc<ServiceContext>, peer_addr: SocketAddr) -> Self {
+        Self { ctx, peer_addr }
     }
 }
 
@@ -120,6 +122,15 @@ impl hyper::service::Service<Request> for Service {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send>>;
 
     fn call(&self, req: Request) -> Self::Future {
+        let method = req.method().as_str();
+        let path = req.uri().path();
+        let peer_addr = self.peer_addr.to_string();
+        let forwarded_for = req
+            .headers()
+            .get("x-forwarded-for")
+            .map(|value| value.to_str().unwrap_or_default())
+            .unwrap_or_default();
+        ::tracing::info!(method, path, peer_addr, forwarded_for, "incoming_request");
         let ctx = self.ctx.clone();
         Box::pin(async move { route_request(req, ctx).await })
     }
