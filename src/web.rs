@@ -3,7 +3,7 @@ use hyper::{body::Bytes, StatusCode};
 use include_dir::{include_dir, Dir};
 
 pub async fn route_request(req: Request) -> Result<Response> {
-    const WEB_DIR: Dir = include_dir!("web/dist/planc");
+    const WEB_DIR: Dir = include_dir!("web/dist");
 
     let uri = req.uri();
     assert!(uri.path().starts_with('/'));

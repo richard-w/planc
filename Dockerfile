@@ -11,8 +11,7 @@ RUN npm install
 # Copy sources.
 ADD --chown=node:node web /work
 # Build frontend.
-ARG configuration=production
-RUN npm run build -- --configuration $configuration
+RUN npm run build
 
 # Backend build image.
 FROM rust AS backend_build
