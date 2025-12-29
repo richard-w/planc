@@ -85,9 +85,11 @@ export default function SessionControlProvider({ children }: SessionControlProvi
   let numNonSpectators = 0;
   for (const uid in sessionState?.users) {
     const user = sessionState.users[uid];
-    if (user.points === null && !user.isSpectator) {
-      revealPoints = false;
+    if (!user.isSpectator) {
       numNonSpectators += 1;
+      if (user.points === null) {
+        revealPoints = false;
+      }
     }
   }
   if (numNonSpectators === 0) {
