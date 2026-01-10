@@ -10,15 +10,20 @@ export default function Statistics() {
 
   // Determine mean vote, low vote and high vote.
   let meanVote = 0.0;
-  let lowVote = Number.MAX_VALUE;
-  let highVote = Number.MIN_VALUE;
+  let lowVote = Number.POSITIVE_INFINITY;
+  let highVote = Number.NEGATIVE_INFINITY;
   let numUsers = 0;
+  let votesExcluded = 0;
   for (const uid in sessionState.users) {
     const user = sessionState.users[uid];
     if (user.isSpectator) {
       continue;
     }
     const points = Number(user.points);
+    if (!Number.isFinite(points)) {
+      votesExcluded += 1;
+      continue;
+    }
     meanVote += points; 
     numUsers += 1;
     if (points < lowVote) {
@@ -43,22 +48,25 @@ export default function Statistics() {
     }
   }
 
+  const integerIfFinite = (number: number): string => Number.isFinite(number) ? number.toFixed() : "?";
+
   return (
     <mc.Table variant="vertical">
       <mc.Table.Tbody>
         <mc.Table.Tr>
           <mc.Table.Th w={120}>Mean Vote</mc.Table.Th>
-          <mc.Table.Td w={60}>{meanVote.toFixed()}</mc.Table.Td>
+          <mc.Table.Td w={60}>{integerIfFinite(meanVote)}</mc.Table.Td>
+          <mc.Table.Td>{votesExcluded > 0 ? ` (${votesExcluded} votes excluded)` : ""}</mc.Table.Td>
         </mc.Table.Tr>
         <mc.Table.Tr>
           <mc.Table.Th>Low Vote</mc.Table.Th>
-          <mc.Table.Td>{lowVote.toFixed()}</mc.Table.Td>
-          <mc.Table.Td>({lowVoters.join(", ")})</mc.Table.Td>
+          <mc.Table.Td>{integerIfFinite(lowVote)}</mc.Table.Td>
+          <mc.Table.Td>{lowVoters.length > 0 ? `(${lowVoters.join(", ")})` : ""}</mc.Table.Td>
         </mc.Table.Tr>
         <mc.Table.Tr>
           <mc.Table.Th>High Vote</mc.Table.Th>
-          <mc.Table.Td>{highVote.toFixed()}</mc.Table.Td>
-          <mc.Table.Td>({highVoters.join(", ")})</mc.Table.Td>
+          <mc.Table.Td>{integerIfFinite(highVote)}</mc.Table.Td>
+          <mc.Table.Td>{highVoters.length > 0 ? `(${highVoters.join(", ")})` : ""}</mc.Table.Td>
         </mc.Table.Tr>
       </mc.Table.Tbody>
     </mc.Table>
